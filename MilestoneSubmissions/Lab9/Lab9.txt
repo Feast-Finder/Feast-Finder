@@ -1,0 +1,67 @@
+1. Team Number
+0114
+
+2. Team name
+Grass Touchers
+
+3. Team Members
+Cody Newton
+Christopher Chan
+Tate Charboneau
+Mason Esslinger
+Sam Garmany
+Jack Van Dyke
+
+4. Application Name
+Feast Finder
+
+5. Application Description
+    Its an app that allows two users to connect and select a resturant in a tinder like style. We might intergrate some more options such as food type or rating of the resturant but for now it will be any resturants in a city. It will go through resturants in a city and once a match is shown it will pop up for both users. We will use a google maps api and a couple tables in a database for users, user to user, and possible user to resturant depending on how we intergrate that portion. 
+
+6. Audience
+Hungry Indecsive people, couples, or groups that cant decide what they want to eat. College students maybe drunk or high so should be simple to use.  
+
+
+7. Vision Statement
+For friends who cant decide where to eat FeastFinder makes choosing fun by letting everyone swipe and match on local restaurants - ensuring a group approved spot everytime.
+
+8. Version Control
+info
+You are required to create a public GitHub repository and add all the members of the team to it. Share the link to this repository in this document.
+
+This repository should have the following folders:
+
+TeamMeetingLogs - The minutes of the meeting with your TA every week will be recorded in a file here. You will be updating the same file every week with the latest updates. Points to include in the minutes would be:
+Decisions made
+Alternative actions/options discussed
+Follow-up items, including agreed-on roles and responsibilities
+MilestoneSubmissions - All course-related documents, including this one, will be stored in this folder.
+ProjectSourceCode - The source code and all relevant project documentation for the application will be stored in this folder.
+ReadMe.md - Refer to the project guide for more information on this.
+For a detailed view of your repository, refer to the project guide
+.gitignore - Please remember to create a .gitignore file in your "ProjectSourceCode" folder in the repository
+9. Development Methodology
+We are going to do week long sprints where we assign tasks at the beginning of the week and then meet at the end to discuss progress and ideas for next week. 
+
+10. Communication Plan
+We will use teams, set up a meeting at the beginning of the week possibly during lab and then meet at the end of the week with the TA and discuss progress. 
+
+
+11. Meeting Plan
+Team Meeting: Identify the day(s) and time(s), mode, and location your team has agreed upon for regular meetings. “Modality” refers to how you are meeting (face-to-face), group video chat (like Zoom, Google Meet), etc.
+Weekly meeting with TA: You will also mention the meeting day, time and location (physical or online) for the weekly meeting with your TA here.
+Please refer to these instructions for expectations in your weekly meeting with your TAs. Do read the entire section carefully.
+
+Mondays: 12pm 15 mins.
+
+
+Fridays (1pm with the TA); 
+12. Use Case Diagram
+Create a high-level Use Case Diagram for your application. Your diagram must show at least 6 key features of your application.
+
+This activity should help you identify the end users of the application and the ways they would interact with the system. You can reference the examples covered in class. This will also help you scope out the features of your application. You can refer to this page for more information on how to create a Use Case Diagram.
+
+13. Wireframes
+You will create wireframes for each page of the application.
+
+Wireframes are low-fidelity visual representations of the user interface of your application. They are used to plan the layout of the application and to communicate the flow of the application to the team. You can use any tool of your choice to create the wireframes. Hand sketched wireframes are also acceptable. You can refer to this for more information on why and how to create wireframes.
