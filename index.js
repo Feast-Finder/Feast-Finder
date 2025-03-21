@@ -20,8 +20,8 @@ const axios = require('axios'); // To make HTTP requests from our server. We'll 
 // create `ExpressHandlebars` instance and configure the layouts and partials dir.
 const hbs = handlebars.create({
   extname: 'hbs',
-  layoutsDir: __dirname + '/views/layouts',
-  partialsDir: __dirname + '/views/partials',
+  layoutsDir: __dirname + '/ProjectSourceCode/views/layouts',
+  partialsDir: __dirname + '/ProjectSourceCode/views/partials',
 });
 
 // database configuration
@@ -52,7 +52,7 @@ db.connect()
 // Register `hbs` as our view engine using its bound `engine()` function.
 app.engine('hbs', hbs.engine);
 app.set('view engine', 'hbs');
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', path.join(__dirname, 'ProjectSourceCode/views'));
 app.use(bodyParser.json()); // specify the usage of JSON for parsing request body.
 
 // initialize session variables
@@ -76,6 +76,9 @@ app.use(
 // Authentication Middleware.
 
 
+app.get('/', (req, res) => {
+  res.render('Pages/Home')
+});
 app.get('/login', (req, res) => {
     res.render('Pages/login')
   });
@@ -87,6 +90,9 @@ app.get('/login', (req, res) => {
   });
   app.get('/profile', (req, res) => {
     res.render('Pages/Profile')
+  });
+  app.get('/friends', (req, res) => {
+    res.render('Pages/friends')
   });
 
   app.post('/register', async(req,res)=>{
@@ -140,7 +146,7 @@ if(!match){
 
 app.get('/logout', (req, res) => {
     req.session.destroy(function(err) {
-      res.render('pages/logout');
+      res.render('ProjectSourceCode/Pages/logout');
     });
   });
   
