@@ -58,7 +58,7 @@ app.use(bodyParser.json()); // specify the usage of JSON for parsing request bod
 // initialize session variables
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || 'PLACEHOLDER_SECRET',
     saveUninitialized: false,
     resave: false,
   })
@@ -80,76 +80,78 @@ app.get('/', (req, res) => {
   res.render('Pages/Home')
 });
 app.get('/login', (req, res) => {
-    res.render('Pages/login')
-  });
-  app.get('/register', (req, res) => {
-    res.render('Pages/register')
-  });
-  app.get('/home', (req, res) => {
-    res.render('Pages/Home')
-  });
-  app.get('/profile', (req, res) => {
-    res.render('Pages/Profile')
-  });
-  app.get('/friends', (req, res) => {
-    res.render('Pages/friends')
-  });
+  res.render('Pages/login')
+});
+app.get('/register', (req, res) => {
+  res.render('Pages/register')
+});
+app.get('/home', (req, res) => {
+  res.render('Pages/Home')
+});
+app.get('/profile', (req, res) => {
+  res.render('Pages/Profile')
+});
+app.get('/friends', (req, res) => {
+  res.render('Pages/friends')
+});
 
-  app.post('/register', async(req,res)=>{
-    const hash =await bcrypt.hash(req.body.password,10);
-try {   await db.none(
-    `INSERT INTO users (username, password) VALUES ($1,$2)`,
-    [req.body.username,hash]
-  );
+app.post('/register', async (req, res) => {
+  const hash = await bcrypt.hash(req.body.password, 10);
+  try {
+    await db.none(
+      `INSERT INTO users (username, password) VALUES ($1,$2)`,
+      [req.body.username, hash]
+    );
     res.redirect('/login');
-} catch (err) {
+  } catch (err) {
     console.log(err);
     res.redirect('/register');
-}
-  })
+  }
+})
 
 
-app.post('/login', async(req,res)=>{
-try {    const user = await db.one(
-    `SELECT * FROM users u WHERE u.username = $1`,
-    [req.body.username]
-  );
-    if(!user){
-        return res.render('/register');
+app.post('/login', async (req, res) => {
+  try {
+    const user = await db.one(
+      `SELECT * FROM users u WHERE u.username = $1`,
+      [req.body.username]
+    );
+    if (!user) {
+      return res.render('/register');
     }
 
-      
-    const match =await bcrypt.compare(req.body.password,user.password);
-if(!match){
-    return res.render('/login',{message: 'Incorrect username or password.'});
-}
-        // Save user details in session
-        req.session.user = user;
-        req.session.save(() => {
-            res.redirect('/discover');
-        })
-} catch (err) {
+
+    const match = await bcrypt.compare(req.body.password, user.password);
+    if (!match) {
+      return res.render('/login', { message: 'Incorrect username or password.' });
+    }
+    // Save user details in session
+    req.session.user = user;
+    req.session.save(() => {
+      res.redirect('/discover');
+    })
+  } catch (err) {
     console.log(err);
     res.redirect('/register');
-}
-  })
-  const auth = (req, res, next) => {
-    if (!req.session.user) {
-      // Default to login page.
-      return res.redirect('/login');
-    }
-    next();
-  };
-  
-  // Authentication Required
-  app.use(auth);
+  }
+})
+const auth = (req, res, next) => {
+  if (!req.session.user) {
+    // Default to login page.
+    return res.redirect('/login');
+  }
+  next();
+};
+
+// Authentication Required
+app.use(auth);
 
 app.get('/logout', (req, res) => {
-    req.session.destroy(function(err) {
-      res.render('ProjectSourceCode/Pages/logout');
-    });
+  req.session.destroy(function (err) {
+    res.render('ProjectSourceCode/Pages/logout');
   });
-  
+});
+
 
 // *****************************************************
 // <!-- Section 5 : Start Server-->
