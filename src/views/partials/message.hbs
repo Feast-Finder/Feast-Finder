@@ -1,5 +1,8 @@
 {{#if message}}
-  <div class="alert alert-{{#if error}}danger{{else}}success{{/if}}" role="alert">
-    {{ message }}
-  </div>
+<div
+  class="alert alert-{{#if error}}danger{{else}}{{#if success}}success{{else}}info{{/if}}{{/if}} alert-dismissible fade show"
+  role="alert">
+  {{ message }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
 {{/if}}
