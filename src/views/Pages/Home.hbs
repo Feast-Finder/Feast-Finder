@@ -3,7 +3,7 @@
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
             <div class="card shadow-lg position-relative">
-                <!-- Content Overlay - note this only covers the card, not the header -->
+                <!-- grey overlay -->
                 <div id="contentOverlay"
                     class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
                     style="background-color: rgba(0,0,0,0.7); z-index: 10; border-radius: inherit;">
@@ -17,7 +17,7 @@
                 </div>
 
                 <div class="card-body p-0">
-                    <!-- Restaurant Card -->
+                    <!-- main card -->
                     <div id="restaurant-card" class="position-relative">
                         <div class="position-relative">
                             <img src="https://lh5.googleusercontent.com/p/AF1QipOvUPyym4NErFKQ4HOBVVnwOR2GMVVjQmQDuoGe=w520-h350-n-k-no"
@@ -54,7 +54,7 @@
     </div>
 </div>
 
-<!-- Group Session Modal -->
+<!-- make a group card -->
 <div class="modal fade" id="startSessionModal" tabindex="-1" aria-labelledby="startSessionModalLabel"
     aria-hidden="true">
     <div class="modal-dialog">
@@ -117,7 +117,7 @@
     </div>
 </div>
 
-<!-- Match Found Modal -->
+<!-- valid match card -->
 <div class="modal fade" id="matchModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -165,20 +165,18 @@
     #contentOverlay {
         transition: opacity 0.5s ease;
         pointer-events: auto;
-        /* Allow interactions with the overlay and its children */
     }
 
     #contentOverlay>* {
         pointer-events: auto;
-        /* Ensure child elements like the button are clickable */
+        /* makes sure the start button is clickable */
     }
 
     #contentOverlay[style*="display: none"] {
         pointer-events: none;
-        /* Prevent interaction when hidden */
+        /* prevents the like and dislike buttons from working before starting a group*/
     }
 
-    /* Styling for when buttons are disabled */
     .btn:disabled {
         opacity: 0.65;
         cursor: not-allowed;
@@ -195,17 +193,16 @@
         const startSessionBtn = document.getElementById('startSessionBtn');
         const startSessionModal = document.getElementById('startSessionModal');
 
-        // Pre-initialize the Bootstrap modal to ensure we can access it later
         const modal = new bootstrap.Modal(startSessionModal);
 
-        // Hide overlay and enable buttons when user starts a session
+        // hide the overlay and enable buttons, also prints the status of the buttons for debugging
         startSessionBtn.addEventListener('click', function () {
             console.log('Start session button clicked');
 
-            // Add fade out effect
+            // I saw this in the docs
             contentOverlay.style.opacity = '0';
 
-            // After animation completes, hide the overlay and enable buttons
+            // wait for the animation to finidh before enabling the buttons
             setTimeout(() => {
                 contentOverlay.style.display = 'none';
                 contentOverlay.style.pointerEvents = 'none'; // Ensure no interaction blocking
@@ -219,7 +216,7 @@
                     'Dislike button disabled?', dislikeBtn.disabled);
             }, 500);
 
-            // Close the modal
+            // close modal
             try {
                 modal.hide();
             } catch (e) {
@@ -228,14 +225,14 @@
             }
         });
 
-        // Demo functionality for swiping
+        // swiping that's kinda ugly
         likeBtn.addEventListener('click', function () {
             console.log('Like button clicked, disabled?', this.disabled);
 
             restaurantCard.classList.add('swipe-right');
             setTimeout(() => {
                 restaurantCard.classList.remove('swipe-right');
-                // Here you would fetch the next restaurant from an API
+                // api should go here
             }, 500);
         });
 
@@ -245,11 +242,11 @@
             restaurantCard.classList.add('swipe-left');
             setTimeout(() => {
                 restaurantCard.classList.remove('swipe-left');
-                // Here you would fetch the next restaurant from an API
+                // and here
             }, 500);
         });
 
-        // For demo purposes - uncomment to show match modal after delay
+        // for testing the match modal
         // setTimeout(() => {
         //    const matchModal = new bootstrap.Modal(document.getElementById('matchModal'));
         //    matchModal.show();
