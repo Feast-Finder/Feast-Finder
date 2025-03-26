@@ -1,4 +1,25 @@
 {{#> layout name="main" }}
-
-
+<h1 class="m-2 d-flex justify-content-center">Login</h1>
+<div class="m-2 d-flex justify-content-center">
+  <form class="p-5 col-md-7 bg-dark-subtle rounded-4" method="post" action="/login">
+    <div class="form-floating mb-4">
+      <input type="text" class="form-control rounded-5 px-5" id="username" placeholder="Username">
+      <label for="username" class="px-5">Username</label>
+    </div>
+    <div class="form-floating mb-4">
+      <input type="password" class="form-control rounded-5 px-5" id="password" placeholder="Password">
+      <label for="password" class="px-5">Password</label>
+    </div>
+    <div class="row mt-5 justify-content-evenly align-items-center text-center">
+      <div class="col-5">
+        <button type="submit" class="px-5 btn btn-primary btn-lg rounded-5">Login</button>
+      </div>
+      <div class="col-5">
+        <div id="register" class="form-text">
+          Dont't have an account? <a href="/register">Register Here.</a>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
 {{/layout}}
