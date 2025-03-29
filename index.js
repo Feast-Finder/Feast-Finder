@@ -55,6 +55,9 @@ app.set('view engine', 'hbs');
 app.set('views', path.join(__dirname, 'src/views'));
 app.use(bodyParser.json()); // specify the usage of JSON for parsing request body.
 
+// Serve static files from /public
+app.use(express.static(path.join(__dirname, 'public')));
+
 // initialize session variables
 app.use(
   session({
