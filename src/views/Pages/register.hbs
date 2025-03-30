@@ -8,7 +8,7 @@
           <h2 class="card-title text-center mb-4">Create Account</h2>
           {{> message}}
 
-          <form class="needs-validation" action="/register" method="POST" novalidate>
+          <form id="register-form" class="needs-validation" action="/register" method="POST" novalidate>
             <div class="form-floating mb-3">
               <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
               <label for="username" class="form-label">Username</label>
