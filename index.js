@@ -112,6 +112,18 @@ app.post('/register', async (req, res) => {
   }
 })
 
+app.post('/check-username', async (req, res) => {
+  try {
+    const user = await db.oneOrNone(
+      `SELECT * FROM users u WHERE u.username = $1`,
+      [req.body.username]
+    );
+    res.json({ exists : !!user });
+  } catch (err) {
+    console.log(err);
+    res.status(500);
+  }
+})
 
 app.post('/login', async (req, res) => {
   try {
