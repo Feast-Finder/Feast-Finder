@@ -55,6 +55,9 @@ app.set('view engine', 'hbs');
 app.set('views', path.join(__dirname, 'src/views'));
 app.use(bodyParser.json()); // specify the usage of JSON for parsing request body.
 
+// Serve static files from /public
+app.use(express.static(path.join(__dirname, 'public')));
+
 // initialize session variables
 app.use(
   session({
@@ -109,6 +112,18 @@ app.post('/register', async (req, res) => {
   }
 })
 
+app.post('/check-username', async (req, res) => {
+  try {
+    const user = await db.oneOrNone(
+      `SELECT * FROM users u WHERE u.username = $1`,
+      [req.body.username]
+    );
+    res.json({ exists : !!user });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+})
 
 app.post('/login', async (req, res) => {
   try {
