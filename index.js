@@ -121,7 +121,7 @@ app.post('/check-username', async (req, res) => {
     res.json({ exists : !!user });
   } catch (err) {
     console.log(err);
-    res.status(500);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 })
 
