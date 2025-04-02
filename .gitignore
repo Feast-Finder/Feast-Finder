@@ -135,5 +135,6 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# the git helper
+# other stuff
 .git_helper.sh
+.need_to_sort
