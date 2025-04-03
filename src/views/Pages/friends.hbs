@@ -1,176 +1,173 @@
 {{#> layout name="main" }}
-<div class="container py-4">
+<div class="container pt-4">
+    <h2 class="mb-4">Friends</h2>
+
+    {{#if error}}
+    <div class="alert alert-danger">{{error}}</div>
+    {{/if}}
+
+    {{#if success}}
+    <div class="alert alert-success">{{success}}</div>
+    {{/if}}
+
     <div class="row">
-        <div class="col-lg-8 mx-auto">
-            <div class="card shadow mb-4">
+        <!-- Current Friends -->
+        <div class="c mb-4">
+            <div class="card">
                 <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">My Friends</h3>
+                    <h5 class="card-title mb-0">Your Friends</h5>
                 </div>
                 <div class="card-body">
+                    {{#if friends.length}}
+                    <ul class="list-group">
+                        {{#each friends}}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>{{this.username}}</span>
+                            <button class="btn btn-sm btn-outline-danger remove-friend" data-user-id="{{this.user_id}}">
+                                Remove
+                            </button>
+                        </li>
+                        {{/each}}
+                    </ul>
+                    {{else}}
+                    <p class="text-muted">You don't have any friends yet. Send a friend request to get started!</p>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
 
-                    <!-- Friend search -->
-                    <div class="mb-4 position-relative">
-                        <input type="text" class="form-control" id="friendSearch"
-                            placeholder="Search for friends by username" autocomplete="off" />
-                        <ul class="list-group position-absolute w-100 mt-1" id="searchResults" style="z-index: 1000">
-                        </ul>
-                    </div>
+        <!-- Add New Friends -->
+        <div class="mb-4 position-relative">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">Add Friends</h5>
+                </div>
+                <div class="card-body">
+                    <input type="text" class="form-control" id="friendSearch"
+                        placeholder="Search for friends by username" autocomplete="off" />
+                    <ul class="list-group position-absolute w-100 mt-1" id="searchResults" style="z-index: 1000">
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <!-- Past Sessions -->
+        <div class="card shadow">
+            <div class="card-header bg-secondary text-white">
+                <h3 class="mb-0">Recent Sessions</h3>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">Session with JaneSmith, MikeJohnson</h5>
+                            <small class="text-muted">2 days ago</small>
+                        </div>
+                        <p class="mb-1">Matched on: Italian Restaurant</p>
+                    </a>
 
-                    <script>
-                        const searchInput = document.getElementById('friendSearch');
-                        const resultsBox = document.getElementById('searchResults');
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">Session with MikeJohnson</h5>
+                            <small class="text-muted">1 week ago</small>
+                        </div>
+                        <p class="mb-1">Matched on: Mexican Food Truck</p>
+                    </a>
+                </div>
+            </div>
+        </div>
 
-                        searchInput.addEventListener('input', async () => {
-                            const query = searchInput.value.trim();
-                            if (!query) {
-                                resultsBox.innerHTML = '';
-                                return;
-                            }
+        <script>
+            const searchInput = document.getElementById('friendSearch');
+            const resultsBox = document.getElementById('searchResults');
 
-                            try {
-                                const res = await fetch(`/search-users?q=${encodeURIComponent(query)}`);
-                                const users = await res.json();
+            searchInput.addEventListener('input', async () => {
+                const query = searchInput.value.trim();
+                if (!query) {
+                    resultsBox.innerHTML = '';
+                    return;
+                }
 
-                                resultsBox.innerHTML = '';
+                try {
+                    const res = await fetch(`/search-users?q=${encodeURIComponent(query)}`);
+                    const users = await res.json();
 
-                                if (users.length === 0) {
-                                    const li = document.createElement('li');
-                                    li.className = 'list-group-item text-muted';
-                                    li.textContent = 'No users found';
-                                    resultsBox.appendChild(li);
-                                    return;
-                                }
+                    resultsBox.innerHTML = '';
 
-                                users.forEach(user => {
-                                    const li = document.createElement('li');
-                                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                                    li.innerHTML = `
+                    if (users.length === 0) {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item text-muted';
+                        li.textContent = 'No users found';
+                        resultsBox.appendChild(li);
+                        return;
+                    }
+
+                    users.forEach(user => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        li.innerHTML = `
           <span>${user.username}</span>
           <button class="btn btn-sm btn-outline-primary">Add Friend</button>
         `;
 
-                                    li.querySelector('button').addEventListener('click', async () => {
-                                        const res = await fetch('/send-friend-request', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ friend_id: user.user_id })
-                                        });
+                        li.querySelector('button').addEventListener('click', async () => {
+                            const res = await fetch('/send-friend-request', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ friend_id: user.user_id })
+                            });
 
-                                        if (res.ok) {
-                                            li.querySelector('button').disabled = true;
-                                            li.querySelector('button').textContent = 'Request Sent';
-                                            li.querySelector('button').classList.replace('btn-outline-primary', 'btn-success');
-                                        } else {
-                                            li.querySelector('button').textContent = 'Error';
-                                            li.querySelector('button').classList.replace('btn-outline-primary', 'btn-danger');
-                                        }
-                                    });
-
-                                    resultsBox.appendChild(li);
-                                });
-                            } catch (error) {
-                                console.error('Search error:', error);
+                            if (res.ok) {
+                                li.querySelector('button').disabled = true;
+                                li.querySelector('button').textContent = 'Added';
+                                li.querySelector('button').classList.replace('btn-outline-primary', 'btn-success');
+                            } else {
+                                li.querySelector('button').textContent = 'Error';
+                                li.querySelector('button').classList.replace('btn-outline-primary', 'btn-danger');
                             }
                         });
-                          document.addEventListener('click', (event) => {
-    const isClickInside = searchInput.contains(event.target) || resultsBox.contains(event.target);
-    if (!isClickInside) {
-      resultsBox.innerHTML = '';
-    }
-  });
-                    </script>
 
+                        resultsBox.appendChild(li);
+                    });
+                } catch (error) {
+                    console.error('Search error:', error);
+                }
+            });
+            document.addEventListener('click', (event) => {
+                const isClickInside = searchInput.contains(event.target) || resultsBox.contains(event.target);
+                if (!isClickInside) {
+                    resultsBox.innerHTML = '';
+                }
+            });
+            document.querySelectorAll('.remove-friend').forEach(button => {
+                button.addEventListener('click', async function () {
+                    if (!confirm('Are you sure you want to remove this friend?')) {
+                        return;
+                    }
 
-                    <!-- Friend list -->
-                    <h5>My Friends</h5>
-                    <div class="list-group">
-                        <div
-                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center">
-                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3"
-                                    style="width: 40px; height: 40px;">
-                                    <span>JS</span>
-                                </div>
-                                <div>
-                                    <h6 class="mb-0">JaneSmith</h6>
-                                    <small class="text-muted">Online</small>
-                                </div>
-                            </div>
-                            <div>
-                                <button class="btn btn-sm btn-primary me-2">Start Session</button>
-                                <div class="dropdown d-inline-block">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="bi bi-three-dots"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item" href="#">View Profile</a></li>
-                                        <li><a class="dropdown-item" href="#">Remove Friend</a></li>
-                                        <li><a class="dropdown-item" href="#">Block</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
+                    const userId = this.dataset.userId;
 
-                        <div
-                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center">
-                                <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center me-3"
-                                    style="width: 40px; height: 40px;">
-                                    <span>MJ</span>
-                                </div>
-                                <div>
-                                    <h6 class="mb-0">MikeJohnson</h6>
-                                    <small class="text-muted">Last active 2 days ago</small>
-                                </div>
-                            </div>
-                            <div>
-                                <button class="btn btn-sm btn-primary me-2">Start Session</button>
-                                <div class="dropdown d-inline-block">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="bi bi-three-dots"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item" href="#">View Profile</a></li>
-                                        <li><a class="dropdown-item" href="#">Remove Friend</a></li>
-                                        <li><a class="dropdown-item" href="#">Block</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    try {
+                        const response = await fetch('/friends/remove', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ user_id: userId })
+                        });
 
-            <!-- Past Sessions -->
-            <div class="card shadow">
-                <div class="card-header bg-secondary text-white">
-                    <h3 class="mb-0">Recent Sessions</h3>
-                </div>
-                <div class="card-body">
-                    <div class="list-group">
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h5 class="mb-1">Session with JaneSmith, MikeJohnson</h5>
-                                <small class="text-muted">2 days ago</small>
-                            </div>
-                            <p class="mb-1">Matched on: Italian Restaurant</p>
-                        </a>
+                        const data = await response.json();
+                        if (data.success) {
+                            alert('Friend removed');
+                            window.location.reload();
+                        } else {
+                            alert('Failed to remove friend: ' + (data.error || 'Unknown error'));
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('An error occurred while removing the friend');
+                    }
+                });
+            });
 
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h5 class="mb-1">Session with MikeJohnson</h5>
-                                <small class="text-muted">1 week ago</small>
-                            </div>
-                            <p class="mb-1">Matched on: Mexican Food Truck</p>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </script>
     </div>
 </div>
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 {{/layout}}
