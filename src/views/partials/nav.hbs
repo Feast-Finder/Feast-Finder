@@ -1,48 +1,52 @@
 <header>
-  <nav class="navbar navbar-expand-sm navbar-light bg-light border-bottom">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
-      <a class="navbar-brand" href="/">Feast Finder</a>
-      <button
-        class="navbar-toggler"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#navbar-collapse"
-        aria-controls="navbar"
-        aria-expanded="false"
-        aria-label="Toggle navigation"
-      >
+      <!-- Brand -->
+      <a class="navbar-brand d-flex align-items-center" href="/home">
+        <i class="bi bi-compass me-2"></i>Feast Finder
+      </a>
+
+      <!-- Toggle button for mobile -->
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-collapse"
+        aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
+
+      <!-- Collapsible content -->
       <div class="collapse navbar-collapse" id="navbar-collapse">
+        <!-- Left links -->
         <ul class="navbar-nav me-auto">
           <li class="nav-item">
             <a class="nav-link" href="/home">Home</a>
           </li>
         </ul>
-        
+
+        <!-- Right links (auth section) -->
         <ul class="navbar-nav ms-auto">
           {{#if user}}
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-1" style="width: 30px; height: 30px; font-size: 0.9rem;">
-                  <span>{{user.username.[0]}}</span>
-                </div>
-                <span class="ms-1">{{user.username}}</span>
-              </a>
-              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                <li><a class="dropdown-item" href="/profile">Profile</a></li>
-                <li><a class="dropdown-item" href="/friends">Friends</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="/logout">Logout</a></li>
-              </ul>
-            </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button"
+              data-bs-toggle="dropdown" aria-expanded="false">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
+                style="width: 30px; height: 30px; font-size: 0.9rem;">
+                <span>{{charAt user.username 0}}</span>
+              </div>
+              <span>{{user.username}}</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+              <li><a class="dropdown-item" href="/profile">Profile</a></li>
+              <li><a class="dropdown-item" href="/friends">Friends</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="/logout">Logout</a></li>
+            </ul>
+          </li>
           {{else}}
-            <li class="nav-item">
-              <a class="nav-link" href="/login">Login</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/register">Register</a>
-            </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/login">Login</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/register">Register</a>
+          </li>
           {{/if}}
         </ul>
       </div>
