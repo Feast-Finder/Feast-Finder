@@ -2,25 +2,29 @@
 CREATE TYPE swipe_direction_enum AS ENUM ('left', 'right');
 
 -- 1. Users Table
-CREATE TABLE Users (
+CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE,
     password_hash VARCHAR(255), -- LATER IMPLEMENT HASHING bcrypt or argon
+    location_latitude DECIMAL(10, 6),
+    location_longitude DECIMAL(10, 6),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-COMMENT ON TABLE Users IS 'Stores information about users of the Feast Finder app.';
-COMMENT ON COLUMN Users.user_id IS 'Unique identifier for each user.';
-COMMENT ON COLUMN Users.username IS 'Username for login and display.';
-COMMENT ON COLUMN Users.email IS 'User''s email address (optional).';
-COMMENT ON COLUMN Users.password_hash IS 'Hashed password for secure authentication.';
-COMMENT ON COLUMN Users.created_at IS 'Timestamp when the user account was created.';
-COMMENT ON COLUMN Users.location_latitude IS 'User''s current latitude.';
-COMMENT ON COLUMN Users.location_longitude IS 'User''s current longitude.';
+COMMENT ON TABLE users IS 'Stores information about users of the Feast Finder app.';
+COMMENT ON COLUMN users.user_id IS 'Unique identifier for each user.';
+COMMENT ON COLUMN users.username IS 'Username for login and display.';
+COMMENT ON COLUMN users.email IS 'User''s email address (optional).';
+COMMENT ON COLUMN users.password_hash IS 'Hashed password for secure authentication.';
+COMMENT ON COLUMN users.location_latitude IS 'User''s current latitude.';
+COMMENT ON COLUMN users.location_longitude IS 'User''s current longitude.';
+COMMENT ON COLUMN users.created_at IS 'Timestamp when the user account was created.';
+
 
 -- 2. Friends Table
-CREATE TABLE Friends (
+
+CREATE TABLE IF NOT EXISTS Friends (
     friendship_id SERIAL PRIMARY KEY,
     user_id_1 INTEGER NOT NULL,
     user_id_2 INTEGER NOT NULL,
@@ -42,7 +46,7 @@ CREATE INDEX idx_friends_user_id_1 ON Friends (user_id_1);
 CREATE INDEX idx_friends_user_id_2 ON Friends (user_id_2);
 
 -- 3. Groups Table
-CREATE TABLE Groups (
+CREATE TABLE IF NOT EXISTS Groups (
     group_id SERIAL PRIMARY KEY,
     creator_user_id INTEGER NOT NULL,
     location_latitude DECIMAL(10, 6) NOT NULL,
@@ -66,7 +70,7 @@ COMMENT ON COLUMN Groups.created_at IS 'Timestamp when the group was created.';
 CREATE INDEX idx_groups_creator_user_id ON Groups (creator_user_id);
 
 -- 4. GroupMembers Table
-CREATE TABLE GroupMembers (
+CREATE TABLE IF NOT EXISTS GroupMembers (
     group_member_id SERIAL PRIMARY KEY,
     group_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
@@ -87,7 +91,7 @@ CREATE INDEX idx_group_members_group_id ON GroupMembers (group_id);
 CREATE INDEX idx_group_members_user_id ON GroupMembers (user_id);
 
 -- 5. Restaurants Table
-CREATE TABLE Restaurants (
+CREATE TABLE IF NOT EXISTS Restaurants (
     restaurant_id SERIAL PRIMARY KEY,
     api_restaurant_id VARCHAR(255) UNIQUE NOT NULL, -- Unique ID from the API (Yelp, Google Places)
     name VARCHAR(255) NOT NULL,
@@ -118,7 +122,7 @@ COMMENT ON COLUMN Restaurants.api_data IS 'Stores the entire JSON response (or r
 CREATE INDEX idx_restaurants_api_restaurant_id ON Restaurants (api_restaurant_id);
 
 -- 6. Swipes Table
-CREATE TABLE Swipes (
+CREATE TABLE IF NOT EXISTS Swipes (
     swipe_id SERIAL PRIMARY KEY,
     group_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,

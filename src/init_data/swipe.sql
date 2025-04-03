@@ -1,7 +1,9 @@
+/*
 CREATE TABLE swipes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     user_id INT NOT NULL,
     item_id INT NOT NULL,
-    swipe_action ENUM('like', 'dislike') NOT NULL,
+    swipe_action swipe_direction_enum NOT NULL,
     swiped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+*/

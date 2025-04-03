@@ -24,6 +24,10 @@ const hbs = handlebars.create({
   partialsDir: __dirname + '/src/views/partials',
 });
 
+hbs.handlebars.registerHelper('charAt', function (str, index) {
+  return str && str.charAt(index);
+});
+
 // database configuration
 const dbConfig = {
   host: 'db', // the database server
@@ -67,6 +71,8 @@ app.use(
   })
 );
 
+
+
 app.use(
   bodyParser.urlencoded({
     extended: true,
@@ -77,6 +83,10 @@ app.use(
 // <!-- Section 4 : API Routes -->
 // *****************************************************
 // Authentication Middleware.
+app.use((req, res, next) => {
+  res.locals.user = req.session.user;
+  next();
+});
 
 
 app.get('/', (req, res) => {
@@ -102,7 +112,7 @@ app.post('/register', async (req, res) => {
   const hash = await bcrypt.hash(req.body.password, 10);
   try {
     await db.none(
-      `INSERT INTO users (username, password) VALUES ($1,$2)`,
+      `INSERT INTO Users (username, password_hash) VALUES ($1,$2)`,
       [req.body.username, hash]
     );
     res.redirect('/login');
@@ -114,11 +124,11 @@ app.post('/register', async (req, res) => {
 
 app.post('/check-username', async (req, res) => {
   try {
-    const user = await db.oneOrNone(
-      `SELECT * FROM users u WHERE u.username = $1`,
+    const userc = await db.oneOrNone(
+      `SELECT * FROM Users u WHERE u.username = $1`,
       [req.body.username]
     );
-    res.json({ exists : !!user });
+    res.json({ exists : !!userc });
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -128,22 +138,22 @@ app.post('/check-username', async (req, res) => {
 app.post('/login', async (req, res) => {
   try {
     const user = await db.one(
-      `SELECT * FROM users u WHERE u.username = $1`,
+      `SELECT * FROM Users u WHERE u.username = $1`,
       [req.body.username]
     );
     if (!user) {
-      return res.render('/register');
+      return res.render('src/views/Pages/register',{message:'No Such User' });
     }
 
 
-    const match = await bcrypt.compare(req.body.password, user.password);
+    const match = await bcrypt.compare(req.body.password, user.password_hash);
     if (!match) {
-      return res.render('/login', { message: 'Incorrect username or password.' });
+      return res.render('src/views/Pages/login', { message: 'Incorrect username or password.' });
     }
     // Save user details in session
     req.session.user = user;
     req.session.save(() => {
-      res.redirect('/discover');
+      return res.redirect('/home');
     })
   } catch (err) {
     console.log(err);
@@ -157,6 +167,64 @@ const auth = (req, res, next) => {
   }
   next();
 };
+
+app.get('/search-users', async (req, res) => {
+  const query = req.query.q;
+  const currentUserId = req.session.user?.user_id;
+
+  if (!query) return res.json([]);
+
+  try {
+    const results = await db.any(
+      `SELECT user_id, username FROM Users 
+       WHERE username ILIKE $1 AND user_id != $2 
+       LIMIT 10`,
+      [`%${query}%`, currentUserId]
+    );
+    res.json(results);
+  } catch (err) {
+    console.error('Error during user search:', err);
+    res.status(500).json({ error: 'Internal server error during user search' });
+  }
+});
+
+app.post('/send-friend-request', async (req, res) => {
+  const currentUserId = req.session.user?.user_id;
+  const friendId = req.body.friend_id;
+
+  if (!currentUserId || !friendId || currentUserId === friendId) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  const [user1, user2] = currentUserId < friendId
+    ? [currentUserId, friendId]
+    : [friendId, currentUserId];
+
+  try {
+    // Check if friendship already exists
+    const alreadyFriends = await db.oneOrNone(
+      `SELECT * FROM Friends WHERE user_id_1 = $1 AND user_id_2 = $2 LIMIT 1`,
+      [user1, user2]
+    );
+
+    if (alreadyFriends) {
+      return res.status(409).json({ error: 'You are already friends.' });
+    }
+
+    // Insert new friendship
+    await db.none(
+      `INSERT INTO friends (user_id_1, user_id_2) VALUES ($1, $2)`,
+      [user1, user2]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error sending friend request:', err);
+    res.status(500).json({ error: 'Internal server error while sending friend request' });
+  }
+});
+
+
 
 // Authentication Required
 app.use(auth);
