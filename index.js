@@ -231,7 +231,7 @@ app.use(auth);
 
 app.get('/logout', (req, res) => {
   req.session.destroy(function (err) {
-    res.render('src/Pages/logout');
+    res.render('Pages/logout');
   });
 });
 
