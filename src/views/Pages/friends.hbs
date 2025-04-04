@@ -19,16 +19,23 @@
                 </div>
                 <div class="card-body">
                     {{#if friends.length}}
-                    <ul class="list-group">
+                    <ul class="list-group" id="friendsList">
                         {{#each friends}}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>{{this.username}}</span>
-                            <button class="btn btn-sm btn-outline-danger remove-friend" data-user-id="{{this.user_id}}">
+                            <a href="#" class="fw-bold text-dark text-decoration-none view-profile"
+                                data-user-id="{{this.user_id}}" data-username="{{this.username}}">
+                                {{this.username}}
+                            </a>
+                            <button class="btn btn-sm btn-danger remove-friend" data-user-id="{{this.user_id}}">
                                 Remove
                             </button>
                         </li>
                         {{/each}}
                     </ul>
+
+
+
+
                     {{else}}
                     <p class="text-muted">You don't have any friends yet. Send a friend request to get started!</p>
                     {{/if}}
@@ -75,6 +82,24 @@
                 </div>
             </div>
         </div>
+        <!-- Friend Profile Modal -->
+        <div class="modal fade" id="friendProfileModal" tabindex="-1" aria-labelledby="friendModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="friendModalLabel">Friend Profile</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>Username:</strong> <span id="modalUsername"></span></p>
+                        <!-- Add more info below if needed -->
+                        <p><strong>Email:</strong> <span id="modalEmail"></span></p>
+                        <p><strong>Joined:</strong> <span id="modalJoined"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <script>
             const searchInput = document.getElementById('friendSearch');
@@ -105,9 +130,13 @@
                         const li = document.createElement('li');
                         li.className = 'list-group-item d-flex justify-content-between align-items-center';
                         li.innerHTML = `
-          <span>${user.username}</span>
-          <button class="btn btn-sm btn-outline-primary">Add Friend</button>
-        `;
+  <form action="/send-friend-request" method="POST" class="d-flex justify-content-between align-items-center w-100">
+    <input type="hidden" name="friend_id" value="${user.user_id}" />
+    <span class="me-auto">${user.username}</span>
+    <button type="submit" class="btn btn-sm btn-outline-primary ms-2">Add Friend</button>
+  </form>
+`;
+
 
                         li.querySelector('button').addEventListener('click', async () => {
                             const res = await fetch('/send-friend-request', {
@@ -121,7 +150,7 @@
                                 li.querySelector('button').textContent = 'Added';
                                 li.querySelector('button').classList.replace('btn-outline-primary', 'btn-success');
                             } else {
-                                li.querySelector('button').textContent = 'Error';
+                                li.querySelector('button').textContent = 'Already Friends';
                                 li.querySelector('button').classList.replace('btn-outline-primary', 'btn-danger');
                             }
                         });
@@ -138,35 +167,55 @@
                     resultsBox.innerHTML = '';
                 }
             });
-            document.querySelectorAll('.remove-friend').forEach(button => {
-                button.addEventListener('click', async function () {
-                    if (!confirm('Are you sure you want to remove this friend?')) {
-                        return;
-                    }
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('.remove-friend').forEach(button => {
+                    button.addEventListener('click', async function () {
+                        const userId = this.dataset.userId;
+                        const confirmed = confirm('Are you sure you want to remove this friend?');
+                        if (!confirmed) return;
 
-                    const userId = this.dataset.userId;
+                        try {
+                            const res = await fetch('/friends/remove', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ friend_id: userId })
+                            });
+
+                            const result = await res.json();
+                            if (result.success) {
+                                this.closest('li').remove(); // remove item from DOM
+                            } else {
+                                alert(result.error || 'Failed to remove friend.');
+                            }
+                        } catch (err) {
+                            console.error('Error removing friend:', err);
+                            alert('Server error');
+                        }
+                    });
+                });
+            });
+            document.querySelectorAll('.view-profile').forEach(link => {
+                link.addEventListener('click', async (e) => {
+                    e.preventDefault();
+
+                    const userId = link.dataset.userId;
 
                     try {
-                        const response = await fetch('/friends/remove', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ user_id: userId })
-                        });
+                        const res = await fetch(`/users/${userId}`);
+                        const user = await res.json();
 
-                        const data = await response.json();
-                        if (data.success) {
-                            alert('Friend removed');
-                            window.location.reload();
-                        } else {
-                            alert('Failed to remove friend: ' + (data.error || 'Unknown error'));
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('An error occurred while removing the friend');
+                        document.getElementById('modalUsername').textContent = user.username;
+                        document.getElementById('modalEmail').textContent = user.email || 'N/A';
+                        document.getElementById('modalJoined').textContent = new Date(user.created_at).toLocaleDateString();
+
+                        const modal = new bootstrap.Modal(document.getElementById('friendProfileModal'));
+                        modal.show();
+                    } catch (err) {
+                        console.error('Error fetching profile:', err);
+                        alert('Could not load profile.');
                     }
                 });
             });
-
         </script>
     </div>
 </div>
