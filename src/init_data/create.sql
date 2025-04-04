@@ -166,3 +166,24 @@ COMMENT ON COLUMN Matches.matched_at IS 'Timestamp when the match was determined
 -- Indexes for Matches table
 CREATE INDEX idx_matches_group_id ON Matches (group_id);
 CREATE INDEX idx_matches_restaurant_id ON Matches (restaurant_id);
+--Below: Tentative for possible being able to display a user's most favorited restaurant. 
+-- -- 8. UserSwipeAggregates Table
+-- CREATE TABLE IF NOT EXISTS UserSwipeAggregates (
+--     aggregate_id SERIAL PRIMARY KEY,
+--     user_id INTEGER NOT NULL,
+--     restaurant_id INTEGER NOT NULL,
+--     left_swipe_count INTEGER DEFAULT 0,
+--     right_swipe_count INTEGER DEFAULT 0,
+--     last_swiped_at TIMESTAMP WITH TIME ZONE,
+--     UNIQUE (user_id, restaurant_id), -- Ensure a single aggregate record per user/restaurant
+--     FOREIGN KEY (user_id) REFERENCES Users(user_id),
+--     FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id)
+-- );
+
+-- COMMENT ON TABLE UserSwipeAggregates IS 'Stores aggregated swipe data per user for each restaurant.';
+-- COMMENT ON COLUMN UserSwipeAggregates.aggregate_id IS 'Unique identifier for the swipe aggregate record.';
+-- COMMENT ON COLUMN UserSwipeAggregates.user_id IS 'ID of the user who swiped.';
+-- COMMENT ON COLUMN UserSwipeAggregates.restaurant_id IS 'ID of the restaurant that was swiped on.';
+-- COMMENT ON COLUMN UserSwipeAggregates.left_swipe_count IS 'Number of left swipes by the user for this restaurant.';
+-- COMMENT ON COLUMN UserSwipeAggregates.right_swipe_count IS 'Number of right swipes by the user for this restaurant.';
+-- COMMENT ON COLUMN UserSwipeAggregates.last_swiped_at IS 'Timestamp of the most recent swipe.';
