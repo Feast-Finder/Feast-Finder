@@ -250,15 +250,19 @@ app.post('/login', async (req, res) => {
       `SELECT * FROM Users u WHERE u.username = $1`,
       [req.body.username]
     );
-    if (!user) {
-      return res.render('src/views/Pages/register',{message:'No Such User' });
+
+    if(!user) {
+      return res.render('Pages/login', {
+        message : 'No user found. If you don\'t have an account, you can <a href="/register">create one here.</a>'
+      });
     }
 
-
-    const match = await bcrypt.compare(req.body.password, user.password_hash);
+    const match = user.password_hash ? await bcrypt.compare(req.body.password, user.password_hash) : false;
     if (!match) {
-      return res.render('src/views/Pages/login', { message: 'Incorrect username or password.' });
+      return res.render('Pages/login', { message : 'Incorrect password.' });
     }
+
+
     // Save user details in session
     req.session.user = user;
     req.session.save(() => {
