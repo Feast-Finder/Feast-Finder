@@ -140,6 +140,7 @@ app.post('/login', async (req, res) => {
     if (!match) return res.render('Pages/login', { message: 'Incorrect password.' });
 
     req.session.user = user;
+    
     req.session.save(() => res.redirect('/home'));
   } catch (err) {
     console.log(err);
@@ -148,7 +149,51 @@ app.post('/login', async (req, res) => {
 });
 
 // *****************************************************
-// <!-- Section 7 : Authenticated Routes -->
+// <!-- Section 7 : lab 11/testing Routes -->
+// *****************************************************
+
+app.get('/welcome', (req, res) => {
+  res.json({status: 'success', message: 'Welcome!'});
+});
+//identical to register route but used for testing for lab 11 
+app.post('/register_test', async (req, res) => {
+  const hash = await bcrypt.hash(req.body.password, 10);
+  try {
+    await db.none(`INSERT INTO Users (username, password_hash) VALUES ($1, $2)`, [req.body.username, hash]);
+    res.json({ result: 'Success' });
+   // res.redirect('/login');
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({ result: 'Username already exists' });
+  }
+});
+app.get('/friends_test', async (req, res) => {
+  if (!req.session || !req.session.user) {
+    // Force plain text so your test gets what it expects
+    return res.status(401).type('text/plain').send('Not authenticated');
+  }
+
+  try {
+    const friendsList = await db.any(`
+      SELECT u.user_id, u.username FROM Users u
+      JOIN Friends f ON 
+        (u.user_id = f.user_id_1 AND f.user_id_2 = $1)
+        OR 
+        (u.user_id = f.user_id_2 AND f.user_id_1 = $1)
+      WHERE u.user_id != $1
+    `, [req.session.user.user_id]);
+
+    res.json({
+      username: req.session.user.username,
+      friends: friendsList
+    });
+  } catch (err) {
+    console.error('Error fetching friends:', err);
+    res.status(500).json({ error: 'Failed to load friends' });
+  }
+});
+// *****************************************************
+// <!-- Section 8 : Authenticated Routes -->
 // *****************************************************
 app.use(auth);
 
@@ -232,6 +277,7 @@ app.get('/logout', (req, res) => {
 });
 
 // *****************************************************
-// <!-- Section 8 : Start Server -->
+// <!-- Section 10 : Start Server -->
 // *****************************************************
-app.listen(3000, () => console.log('Server is listening on port 3000'));
+//app.listen(3000, () => console.log('Server is listening on port 3000'));
+module.exports = app.listen(3000, () => console.log('Server is listening on port 3000'));
