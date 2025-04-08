@@ -124,7 +124,8 @@ app.post('/register', async (req, res) => {
   const hash = await bcrypt.hash(req.body.password, 10);
   try {
     await db.none(`INSERT INTO Users (username, password_hash) VALUES ($1, $2)`, [req.body.username, hash]);
-    res.redirect('/login');
+    req.session.user = req.body.username;
+    req.session.save(() => res.redirect('/home'));
   } catch (err) {
     console.log(err);
     res.redirect('/register');
