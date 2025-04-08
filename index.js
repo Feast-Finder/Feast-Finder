@@ -121,6 +121,9 @@ app.post('/check-username', async (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
+  if (req.body.password !== req.body.confirmPassword) {
+    return res.render('Pages/register', { message : 'Passwords do not match' });
+  }
   const hash = await bcrypt.hash(req.body.password, 10);
   try {
     await db.none(`INSERT INTO Users (username, password_hash) VALUES ($1, $2)`, [req.body.username, hash]);
