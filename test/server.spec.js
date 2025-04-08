@@ -13,6 +13,7 @@ const bcryptjs = require('bcryptjs');
 const app = require('../index'); // or wherever your Express app is
 
 
+
 // ********************** DEFAULT WELCOME TESTCASE ****************************
 
 describe('Server!', () => {
@@ -107,7 +108,7 @@ describe('Friends Route Tests', () => {
         .request(app)
         .get('/friends_test')
         .end((err, res) => {
- 
+
           expect(res.text).to.equal('Not authenticated');
           done();
         });

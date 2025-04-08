@@ -17,7 +17,7 @@
         <!-- Left links -->
         <ul class="navbar-nav me-auto">
           <li class="nav-item">
-            <a class="nav-link" href="/home">Home</a>
+            <a class="nav-link" {{#if user}}href="/home"{{else}}href="/"{{/if}} >Home</a>
           </li>
         </ul>
 

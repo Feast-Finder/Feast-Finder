@@ -250,16 +250,24 @@ app.post('/friends/remove', async (req, res) => {
 
 app.get('/search-users', async (req, res) => {
   const query = req.query.q;
-  const currentUserId = req.session.user?.user_id;
+  const currentUserId = req.session.user?.username;
+
   if (!query) return res.json([]);
   try {
-    const results = await db.any(`SELECT user_id, username FROM Users WHERE username ILIKE $1 AND user_id != $2 LIMIT 10`, [`%${query}%`, currentUserId]);
+    const results = await db.any(
+      `SELECT user_id, username 
+       FROM Users 
+       WHERE username ILIKE $1 AND username != $2 
+       LIMIT 10`,
+      [`%${query}%`, currentUserId]
+    );
     res.json(results);
   } catch (err) {
     console.error('Search error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 app.get('/users/:id', async (req, res) => {
   try {
