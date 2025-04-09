@@ -1,6 +1,7 @@
 -- Create the ENUM type for swipe direction
 CREATE TYPE swipe_direction_enum AS ENUM ('left', 'right');
 
+CREATE DATABASE IF NOT EXISTS Feast_Finder_DB;
 -- 1. Users Table
 
 CREATE TABLE IF NOT EXISTS users (
