@@ -2,6 +2,7 @@
 CREATE TYPE swipe_direction_enum AS ENUM ('left', 'right');
 
 -- 1. Users Table
+
 CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
@@ -9,8 +10,12 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255), -- LATER IMPLEMENT HASHING bcrypt or argon
     location_latitude DECIMAL(10, 6),
     location_longitude DECIMAL(10, 6),
+    active BOOLEAN DEFAULT TRUE,
+    last_active_at TIMESTAMP WITH TIME ZONE,
+    profile_picture_url TEXT, -- ✅ New field added
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
 
 COMMENT ON TABLE users IS 'Stores information about users of the Feast Finder app.';
 COMMENT ON COLUMN users.user_id IS 'Unique identifier for each user.';
@@ -19,6 +24,9 @@ COMMENT ON COLUMN users.email IS 'User''s email address (optional).';
 COMMENT ON COLUMN users.password_hash IS 'Hashed password for secure authentication.';
 COMMENT ON COLUMN users.location_latitude IS 'User''s current latitude.';
 COMMENT ON COLUMN users.location_longitude IS 'User''s current longitude.';
+COMMENT ON COLUMN users.active IS 'Indicates whether the user account is currently active.';
+COMMENT ON COLUMN users.last_active_at IS 'The last time the user was active (logged in or out).';
+COMMENT ON COLUMN users.profile_picture_url IS 'URL to the user''s profile picture (can be uploaded or linked to external avatar).';
 COMMENT ON COLUMN users.created_at IS 'Timestamp when the user account was created.';
 
 
@@ -162,6 +170,35 @@ COMMENT ON COLUMN Matches.match_id IS 'Unique identifier for each match.';
 COMMENT ON COLUMN Matches.group_id IS 'ID of the group that matched.';
 COMMENT ON COLUMN Matches.restaurant_id IS 'ID of the matched restaurant.';
 COMMENT ON COLUMN Matches.matched_at IS 'Timestamp when the match was determined.';
+
+
+
+CREATE TABLE user_preferences (
+  user_id INTEGER PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+  cuisines TEXT[],              
+  dietary TEXT[],               
+  price_range TEXT              
+);
+
+CREATE TABLE IF NOT EXISTS UserMatchHistory (
+    history_id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    matched_with TEXT NOT NULL, -- Comma-separated usernames or description like "Solo", "JaneDoe, MikeLee"
+    group_name TEXT,            -- Optional: could be null if solo
+    restaurant_id INTEGER NOT NULL,
+    matched_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id)
+);
+
+COMMENT ON TABLE UserMatchHistory IS 'Tracks the last 5 matches each user has seen.';
+COMMENT ON COLUMN UserMatchHistory.user_id IS 'The user this record is for.';
+COMMENT ON COLUMN UserMatchHistory.matched_with IS 'Other user(s) involved in the match.';
+COMMENT ON COLUMN UserMatchHistory.group_name IS 'Optional name of the group this match was part of.';
+COMMENT ON COLUMN UserMatchHistory.restaurant_id IS 'The restaurant matched on.';
+COMMENT ON COLUMN UserMatchHistory.matched_at IS 'When the match occurred.';
+
 
 -- Indexes for Matches table
 CREATE INDEX idx_matches_group_id ON Matches (group_id);

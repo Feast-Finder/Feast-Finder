@@ -134,3 +134,9 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+
+# other stuff
+.git_helper.sh
+.git_helper_origin.sh
+./public/uploads

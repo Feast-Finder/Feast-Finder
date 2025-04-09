@@ -128,7 +128,7 @@ app.post('/register', async (req, res) => {
   try {
     await db.none(`INSERT INTO Users (username, password_hash) VALUES ($1, $2)`, [req.body.username, hash]);
     req.session.user = req.body.username;
-    req.session.save(() => res.redirect('/home'));
+    req.session.save(() => res.redirect('/login'));
   } catch (err) {
     console.log(err);
     res.redirect('/register');
@@ -143,7 +143,13 @@ app.post('/login', async (req, res) => {
     const match = await bcrypt.compare(req.body.password, user.password_hash);
     if (!match) return res.render('Pages/login', { message: 'Incorrect password.' });
 
+    // Set session user
     req.session.user = user;
+
+    // Mark user as active and set last active time 
+    await db.none(`
+      UPDATE Users SET active = TRUE, last_active_at = CURRENT_TIMESTAMP WHERE user_id = $1
+    `, [user.user_id]);
     
     req.session.save(() => res.redirect('/home'));
   } catch (err) {
@@ -151,6 +157,7 @@ app.post('/login', async (req, res) => {
     res.redirect('/register');
   }
 });
+
 
 // *****************************************************
 // <!-- Section 7 : lab 11/testing Routes -->
@@ -201,22 +208,51 @@ app.get('/friends_test', async (req, res) => {
 // *****************************************************
 app.use(auth);
 
-app.get('/home', (req, res) => {
-  const userGroups = Array.from(groups.values()).filter(g => g.active && g.members.includes(req.session.user.user_id));
-  const userFriends = (friends.get(req.session.user.user_id) || []).map(fid => USERS.find(u => u.user_id === fid));
-  res.render('Pages/Home', { groups: userGroups, friends: userFriends });
+app.get('/home', async (req, res) => {
+  const userId = req.session.user?.user_id;
+  if (!userId) return res.redirect('/login');
+
+  try {
+    // 1. Fetch active groups where user is a member or creator
+    const userGroups = await db.any(`
+      SELECT g.*
+      FROM Groups g
+      LEFT JOIN GroupMembers gm ON g.group_id = gm.group_id
+      WHERE g.creator_user_id = $1
+         OR gm.user_id = $1
+    `, [userId]);
+
+    // 2. Fetch friends with their user info
+    const userFriends = await db.any(`
+      SELECT u.*
+      FROM Users u
+      JOIN Friends f ON (
+        (f.user_id_1 = $1 AND f.user_id_2 = u.user_id)
+        OR
+        (f.user_id_2 = $1 AND f.user_id_1 = u.user_id)
+      )
+    `, [userId]);
+
+    res.render('Pages/Home', { groups: userGroups, friends: userFriends });
+  } catch (err) {
+    console.error('Error loading home page:', err);
+    res.status(500).send('Internal Server Error');
+  }
 });
+
 
 app.get('/profile', (req, res) => res.render('Pages/Profile'));
 
 app.get('/friends', async (req, res) => {
   try {
     const friendsList = await db.any(`
-      SELECT u.user_id, u.username FROM users u
-      JOIN friends f ON (u.user_id = f.user_id_1 AND f.user_id_2 = $1)
-                   OR (u.user_id = f.user_id_2 AND f.user_id_1 = $1)
-      WHERE u.user_id != $1`,
-      [req.session.user.user_id]);
+      SELECT u.user_id, u.username, u.email, u.created_at, u.active
+      FROM Users u
+      JOIN Friends f ON (u.user_id = f.user_id_1 OR u.user_id = f.user_id_2)
+      WHERE (f.user_id_1 = $1 OR f.user_id_2 = $1)
+        AND u.user_id != $1
+    `, [req.session.user.user_id]);
+    
     res.render('Pages/friends', { friends: friendsList });
   } catch (error) {
     console.error('Error fetching friends:', error);
@@ -253,36 +289,254 @@ app.post('/friends/remove', async (req, res) => {
 });
 
 app.get('/search-users', async (req, res) => {
-  const query = req.query.q;
-  const currentUserId = req.session.user?.username;
+  const searchQuery = req.query.q?.trim();
+  const currentUserId = req.session.user?.user_id;
 
-  if (!query) return res.json([]);
+  if (!searchQuery || !currentUserId) return res.json([]);
+
   try {
-    const results = await db.any(
-      `SELECT user_id, username 
-       FROM Users 
-       WHERE username ILIKE $1 AND username != $2 
-       LIMIT 10`,
-      [`%${query}%`, currentUserId]
-    );
-    res.json(results);
+    const users = await db.any(`
+      SELECT 
+        u.user_id, 
+        u.username,
+        u.active,
+        EXISTS (
+          SELECT 1 FROM Friends 
+          WHERE 
+            (user_id_1 = $1 AND user_id_2 = u.user_id) OR 
+            (user_id_2 = $1 AND user_id_1 = u.user_id)
+        ) AS is_friend
+      FROM Users u
+      WHERE LOWER(u.username) LIKE LOWER($2)
+        AND u.user_id != $1
+    `, [currentUserId, `%${searchQuery}%`]);
+
+    res.json(users);
   } catch (err) {
-    console.error('Search error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error in /search-users:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
 
-app.get('/users/:id', async (req, res) => {
+
+app.get('/users/:userId', async (req, res) => {
   try {
-    const user = await db.oneOrNone(`SELECT user_id, username, email, created_at FROM users WHERE user_id = $1`, [req.params.id]);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const user = await db.oneOrNone(
+      `SELECT user_id, username, email, created_at, active, last_active_at FROM Users WHERE user_id = $1`,
+      [req.params.userId]
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
     res.json(user);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Error loading user profile:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+app.post('/groups', async (req, res) => {
+  const userId = req.session.user?.user_id;
+  if (!userId) return res.status(401).json({ success: false, error: 'Not logged in' });
+
+  const { name, location, friends, lat, lng } = req.body;
+
+  try {
+    // Create the group with lat/lng and placeholder for excluded_cuisines
+    const group = await db.one(`
+      INSERT INTO Groups (creator_user_id, location_latitude, location_longitude, excluded_cuisines)
+      VALUES ($1, $2, $3, $4)
+      RETURNING group_id
+    `, [userId, lat, lng, '[]']);
+
+    // Add group members
+    await db.none(`INSERT INTO GroupMembers (group_id, user_id) VALUES ($1, $2)`, [group.group_id, userId]);
+
+    if (Array.isArray(friends)) {
+      for (const friendId of friends) {
+        await db.none(`INSERT INTO GroupMembers (group_id, user_id) VALUES ($1, $2)`, [group.group_id, friendId]);
+      }
+    }
+
+    res.json({ success: true, group_id: group.group_id });
+  } catch (err) {
+    console.error('Error creating group:', err);
+    res.status(500).json({ success: false, error: 'Failed to create group' });
+  }
+});
+
+const Busboy = require('busboy');
+const fs = require('fs');
+
+
+app.post('/profile/upload', (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const busboy = Busboy({ headers: req.headers });
+  const userId = req.session.user.user_id;
+
+  let filePath = '';
+  let savePath = '';
+  let responseSent = false;
+
+  busboy.on('file', (fieldname, file, { filename, encoding, mimeType }) => {
+    console.log('File received:');
+    console.log('filename:', filename);
+    console.log('mimeType:', mimeType);
+
+    if (!filename) {
+      file.resume();
+      if (!responseSent) {
+        res.status(400).json({ error: 'No filename' });
+        responseSent = true;
+      }
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(mimeType)) {
+      file.resume();
+      if (!responseSent) {
+        res.status(400).json({ error: 'Invalid file type' });
+        responseSent = true;
+      }
+      return;
+    }
+
+    const ext = path.extname(filename).toLowerCase();
+    const newFilename = `user_${userId}${ext}`;
+    filePath = `/uploads/${newFilename}`;
+    savePath = path.join(__dirname, 'public', filePath);
+
+    // Ensure the uploads directory exists
+    const uploadsDir = path.join(__dirname, 'public', 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    console.log('📦 Saving to:', savePath);
+    const writeStream = fs.createWriteStream(savePath);
+    file.pipe(writeStream);
+  });
+
+  busboy.on('finish', async () => {
+    if (responseSent) return;
+
+    if (!filePath) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    try {
+      await db.none(`UPDATE Users SET profile_picture_url = $1 WHERE user_id = $2`, [filePath, userId]);
+      req.session.user.profile_picture_url = filePath;
+      res.json({ profile_picture_url: filePath });
+    } catch (err) {
+      console.error('DB error:', err);
+      res.status(500).json({ error: 'Failed to save profile picture' });
+    }
+  });
+
+  req.pipe(busboy);
+});
+
+app.post('/profile/update', async (req, res) => {
+  const userId = req.session.user?.user_id;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { email, currentPassword, newPassword, confirmNewPassword } = req.body;
+
+  try {
+    const user = await db.oneOrNone(`SELECT * FROM Users WHERE user_id = $1`, [userId]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // 1. Update email (if changed)
+    if (email && email !== user.email) {
+      await db.none(`UPDATE Users SET email = $1 WHERE user_id = $2`, [email, userId]);
+      req.session.user.email = email;
+    }
+
+    // 2. Handle password update
+    if (newPassword || confirmNewPassword || currentPassword) {
+      if (!currentPassword || !newPassword || !confirmNewPassword) {
+        return res.status(400).json({ error: 'All password fields are required' });
+      }
+
+      const match = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!match) {
+        return res.status(403).json({ error: 'Current password is incorrect' });
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        return res.status(400).json({ error: 'New passwords do not match' });
+      }
+
+      const isSamePassword = await bcrypt.compare(newPassword, user.password_hash);
+      if (isSamePassword) {
+        return res.status(400).json({ error: 'New password cannot be the same as the current password' });
+      }
+
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await db.none(`UPDATE Users SET password_hash = $1 WHERE user_id = $2`, [hashed, userId]);
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating profile:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+const router = express.Router();
+
+
+// Save food preferences
+router.post('/preferences', async (req, res) => {
+  const userId = req.session.user?.user_id; 
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not logged in' });
+  }
+
+  const { cuisines, dietary, priceRange } = req.body;
+
+  try {
+    // INSERT preferences
+    await db.query(`
+      INSERT INTO user_preferences (user_id, cuisines, dietary, price_range)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (user_id)
+      DO UPDATE SET cuisines = EXCLUDED.cuisines,
+                    dietary = EXCLUDED.dietary,
+                    price_range = EXCLUDED.price_range;
+    `, [userId, cuisines, dietary, priceRange]);
+
+    res.json({ message: 'Preferences saved' });
+  } catch (err) {
+    console.error('Error saving preferences:', err);
+    res.status(500).json({ error: 'Server error saving preferences' });
+  }
+});
+app.use('/profile', router);
+
+
+
+app.get('/logout', async (req, res) => {
+  try {
+    if (req.session.user) {
+      const userId = req.session.user.user_id;
+      await db.none(`
+        UPDATE Users SET active = FALSE, last_active_at = CURRENT_TIMESTAMP WHERE user_id = $1
+      `, [userId]);
+      
+    }
+
+    req.session.destroy(() => res.redirect('/login'));
+  } catch (err) {
+    console.error('Error logging out:', err);
+    res.redirect('/login');
+  }
 
 // Create new group
 app.post('/groups', async (req, res) => {
@@ -319,6 +573,7 @@ app.post('/groups', async (req, res) => {
 app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
+
 
 // *****************************************************
 // <!-- Section 10 : Start Server -->
