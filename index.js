@@ -208,11 +208,38 @@ app.get('/friends_test', async (req, res) => {
 // *****************************************************
 app.use(auth);
 
-app.get('/home', (req, res) => {
-  const userGroups = Array.from(groups.values()).filter(g => g.active && g.members.includes(req.session.user.user_id));
-  const userFriends = (friends.get(req.session.user.user_id) || []).map(fid => USERS.find(u => u.user_id === fid));
-  res.render('Pages/Home', { groups: userGroups, friends: userFriends });
+app.get('/home', async (req, res) => {
+  const userId = req.session.user?.user_id;
+  if (!userId) return res.redirect('/login');
+
+  try {
+    // 1. Fetch active groups where user is a member or creator
+    const userGroups = await db.any(`
+      SELECT g.*
+      FROM Groups g
+      LEFT JOIN GroupMembers gm ON g.group_id = gm.group_id
+      WHERE g.creator_user_id = $1
+         OR gm.user_id = $1
+    `, [userId]);
+
+    // 2. Fetch friends with their user info
+    const userFriends = await db.any(`
+      SELECT u.*
+      FROM Users u
+      JOIN Friends f ON (
+        (f.user_id_1 = $1 AND f.user_id_2 = u.user_id)
+        OR
+        (f.user_id_2 = $1 AND f.user_id_1 = u.user_id)
+      )
+    `, [userId]);
+
+    res.render('Pages/Home', { groups: userGroups, friends: userFriends });
+  } catch (err) {
+    console.error('Error loading home page:', err);
+    res.status(500).send('Internal Server Error');
+  }
 });
+
 
 app.get('/profile', (req, res) => res.render('Pages/Profile'));
 
@@ -310,6 +337,36 @@ app.get('/users/:userId', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+app.post('/groups', async (req, res) => {
+  const userId = req.session.user?.user_id;
+  if (!userId) return res.status(401).json({ success: false, error: 'Not logged in' });
+
+  const { name, location, friends, lat, lng } = req.body;
+
+  try {
+    // Create the group with lat/lng and placeholder for excluded_cuisines
+    const group = await db.one(`
+      INSERT INTO Groups (creator_user_id, location_latitude, location_longitude, excluded_cuisines)
+      VALUES ($1, $2, $3, $4)
+      RETURNING group_id
+    `, [userId, lat, lng, '[]']);
+
+    // Add group members
+    await db.none(`INSERT INTO GroupMembers (group_id, user_id) VALUES ($1, $2)`, [group.group_id, userId]);
+
+    if (Array.isArray(friends)) {
+      for (const friendId of friends) {
+        await db.none(`INSERT INTO GroupMembers (group_id, user_id) VALUES ($1, $2)`, [group.group_id, friendId]);
+      }
+    }
+
+    res.json({ success: true, group_id: group.group_id });
+  } catch (err) {
+    console.error('Error creating group:', err);
+    res.status(500).json({ success: false, error: 'Failed to create group' });
+  }
+});
+
 
 
 app.get('/logout', async (req, res) => {
