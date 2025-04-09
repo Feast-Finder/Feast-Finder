@@ -382,7 +382,7 @@ app.post('/profile/upload', (req, res) => {
   let responseSent = false;
 
   busboy.on('file', (fieldname, file, { filename, encoding, mimeType }) => {
-    console.log('🔍 File received:');
+    console.log('File received:');
     console.log('filename:', filename);
     console.log('mimeType:', mimeType);
 

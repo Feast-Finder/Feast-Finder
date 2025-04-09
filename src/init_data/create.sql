@@ -180,6 +180,25 @@ CREATE TABLE user_preferences (
   price_range TEXT              
 );
 
+CREATE TABLE IF NOT EXISTS UserMatchHistory (
+    history_id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    matched_with TEXT NOT NULL, -- Comma-separated usernames or description like "Solo", "JaneDoe, MikeLee"
+    group_name TEXT,            -- Optional: could be null if solo
+    restaurant_id INTEGER NOT NULL,
+    matched_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id)
+);
+
+COMMENT ON TABLE UserMatchHistory IS 'Tracks the last 5 matches each user has seen.';
+COMMENT ON COLUMN UserMatchHistory.user_id IS 'The user this record is for.';
+COMMENT ON COLUMN UserMatchHistory.matched_with IS 'Other user(s) involved in the match.';
+COMMENT ON COLUMN UserMatchHistory.group_name IS 'Optional name of the group this match was part of.';
+COMMENT ON COLUMN UserMatchHistory.restaurant_id IS 'The restaurant matched on.';
+COMMENT ON COLUMN UserMatchHistory.matched_at IS 'When the match occurred.';
+
 
 -- Indexes for Matches table
 CREATE INDEX idx_matches_group_id ON Matches (group_id);
