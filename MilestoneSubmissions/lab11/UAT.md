@@ -151,10 +151,6 @@
 -   **Users Table**: Requires `testuser` to be logged in.
 -   **Groups Table**: Should be initially empty or easily verifiable.
 
-### Test Results Reporting
--   **Pass/Fail Criteria**:  Each test case will be marked as "Pass" if the "Expected Results" are observed, and "Fail" otherwise.
--   **Test Result Table**:
-
 ### Testers
 -   Team members:
 

@@ -16,10 +16,10 @@ Jack Van Dyke
 Feast Finder
 
 5. Application Description
-    Its an app that allows two users to connect and select a resturant in a tinder like style. We might intergrate some more options such as food type or rating of the resturant but for now it will be any resturants in a city. It will go through resturants in a city and once a match is shown it will pop up for both users. We will use a google maps api and a couple tables in a database for users, user to user, and possible user to resturant depending on how we intergrate that portion. 
+    Its an app that allows two users to connect and select a restaurant in a tinder like style. We might integrate some more options such as food type or rating of the resturant but for now it will be any resturants in a city. It will go through resturants in a city and once a match is shown it will pop up for both users. We will use a google maps api and a couple tables in a database for users, user to user, and possible user to resturant depending on how we intergrate that portion. 
 
 6. Audience
-Hungry Indecsive people, couples, or groups that cant decide what they want to eat. College students maybe drunk or high so should be simple to use.  
+Hungry Indecisive people, couples, or groups that cant decide what they want to eat. College students maybe drunk or high so should be simple to use.  
 
 
 7. Vision Statement
