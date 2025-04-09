@@ -2,6 +2,7 @@
 CREATE TYPE swipe_direction_enum AS ENUM ('left', 'right');
 
 -- 1. Users Table
+-- 1. Users Table
 CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
@@ -9,6 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255), -- LATER IMPLEMENT HASHING bcrypt or argon
     location_latitude DECIMAL(10, 6),
     location_longitude DECIMAL(10, 6),
+    active BOOLEAN DEFAULT TRUE,
+    last_active_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -19,6 +22,8 @@ COMMENT ON COLUMN users.email IS 'User''s email address (optional).';
 COMMENT ON COLUMN users.password_hash IS 'Hashed password for secure authentication.';
 COMMENT ON COLUMN users.location_latitude IS 'User''s current latitude.';
 COMMENT ON COLUMN users.location_longitude IS 'User''s current longitude.';
+COMMENT ON COLUMN users.active IS 'Indicates whether the user account is currently active.';
+COMMENT ON COLUMN users.last_active_at IS 'The last time the user was active (logged in or out).';
 COMMENT ON COLUMN users.created_at IS 'Timestamp when the user account was created.';
 
 

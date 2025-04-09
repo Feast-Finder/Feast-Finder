@@ -1,15 +1,15 @@
 -- Insert Users
-INSERT INTO users (username, email, password_hash) VALUES
-('alice', 'alice@example.com', 'hash1'),
-('bob', 'bob@example.com', 'hash2'),
-('carol', 'carol@example.com', 'hash3'),
-('dave', 'dave@example.com', 'hash4'),
-('eve', 'eve@example.com', 'hash5'),
-('frank', 'frank@example.com', 'hash6'),
-('grace', 'grace@example.com', 'hash7'),
-('heidi', 'heidi@example.com', 'hash8'),
-('ivan', 'ivan@example.com', 'hash9'),
-('judy', 'judy@example.com', 'hash10');
+INSERT INTO users (username, email, password_hash, active, last_active_at) VALUES
+('alice', 'alice@example.com', 'hash1', TRUE, NULL),
+('bob', 'bob@example.com', 'hash2', FALSE, '2025-04-06 14:23:00+00'),
+('carol', 'carol@example.com', 'hash3', TRUE, NULL),
+('dave', 'dave@example.com', 'hash4', FALSE, '2025-04-05 09:15:00+00'),
+('eve', 'eve@example.com', 'hash5', TRUE, NULL),
+('frank', 'frank@example.com', 'hash6', FALSE, '2025-04-07 17:45:00+00'),
+('grace', 'grace@example.com', 'hash7', TRUE, NULL),
+('heidi', 'heidi@example.com', 'hash8', TRUE, NULL),
+('ivan', 'ivan@example.com', 'hash9', FALSE, '2025-04-03 20:00:00+00'),
+('judy', 'judy@example.com', 'hash10', TRUE, NULL);
 
 
 

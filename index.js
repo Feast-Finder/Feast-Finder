@@ -128,7 +128,7 @@ app.post('/register', async (req, res) => {
   try {
     await db.none(`INSERT INTO Users (username, password_hash) VALUES ($1, $2)`, [req.body.username, hash]);
     req.session.user = req.body.username;
-    req.session.save(() => res.redirect('/home'));
+    req.session.save(() => res.redirect('/login'));
   } catch (err) {
     console.log(err);
     res.redirect('/register');
@@ -143,7 +143,13 @@ app.post('/login', async (req, res) => {
     const match = await bcrypt.compare(req.body.password, user.password_hash);
     if (!match) return res.render('Pages/login', { message: 'Incorrect password.' });
 
+    // Set session user
     req.session.user = user;
+
+    // Mark user as active and set last active time 
+    await db.none(`
+      UPDATE Users SET active = TRUE, last_active_at = CURRENT_TIMESTAMP WHERE user_id = $1
+    `, [user.user_id]);
     
     req.session.save(() => res.redirect('/home'));
   } catch (err) {
@@ -151,6 +157,7 @@ app.post('/login', async (req, res) => {
     res.redirect('/register');
   }
 });
+
 
 // *****************************************************
 // <!-- Section 7 : lab 11/testing Routes -->
@@ -212,11 +219,13 @@ app.get('/profile', (req, res) => res.render('Pages/Profile'));
 app.get('/friends', async (req, res) => {
   try {
     const friendsList = await db.any(`
-      SELECT u.user_id, u.username FROM users u
-      JOIN friends f ON (u.user_id = f.user_id_1 AND f.user_id_2 = $1)
-                   OR (u.user_id = f.user_id_2 AND f.user_id_1 = $1)
-      WHERE u.user_id != $1`,
-      [req.session.user.user_id]);
+      SELECT u.user_id, u.username, u.email, u.created_at, u.active
+      FROM Users u
+      JOIN Friends f ON (u.user_id = f.user_id_1 OR u.user_id = f.user_id_2)
+      WHERE (f.user_id_1 = $1 OR f.user_id_2 = $1)
+        AND u.user_id != $1
+    `, [req.session.user.user_id]);
+    
     res.render('Pages/friends', { friends: friendsList });
   } catch (error) {
     console.error('Error fetching friends:', error);
@@ -253,40 +262,73 @@ app.post('/friends/remove', async (req, res) => {
 });
 
 app.get('/search-users', async (req, res) => {
-  const query = req.query.q;
-  const currentUserId = req.session.user?.username;
+  const searchQuery = req.query.q?.trim();
+  const currentUserId = req.session.user?.user_id;
 
-  if (!query) return res.json([]);
+  if (!searchQuery || !currentUserId) return res.json([]);
+
   try {
-    const results = await db.any(
-      `SELECT user_id, username 
-       FROM Users 
-       WHERE username ILIKE $1 AND username != $2 
-       LIMIT 10`,
-      [`%${query}%`, currentUserId]
-    );
-    res.json(results);
+    const users = await db.any(`
+      SELECT 
+        u.user_id, 
+        u.username,
+        u.active,
+        EXISTS (
+          SELECT 1 FROM Friends 
+          WHERE 
+            (user_id_1 = $1 AND user_id_2 = u.user_id) OR 
+            (user_id_2 = $1 AND user_id_1 = u.user_id)
+        ) AS is_friend
+      FROM Users u
+      WHERE LOWER(u.username) LIKE LOWER($2)
+        AND u.user_id != $1
+    `, [currentUserId, `%${searchQuery}%`]);
+
+    res.json(users);
   } catch (err) {
-    console.error('Search error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error in /search-users:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
 
-app.get('/users/:id', async (req, res) => {
+
+app.get('/users/:userId', async (req, res) => {
   try {
-    const user = await db.oneOrNone(`SELECT user_id, username, email, created_at FROM users WHERE user_id = $1`, [req.params.id]);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const user = await db.oneOrNone(
+      `SELECT user_id, username, email, created_at, active, last_active_at FROM Users WHERE user_id = $1`,
+      [req.params.userId]
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
     res.json(user);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Error loading user profile:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-app.get('/logout', (req, res) => {
-  req.session.destroy(() => res.redirect('/login'));
+
+app.get('/logout', async (req, res) => {
+  try {
+    if (req.session.user) {
+      const userId = req.session.user.user_id;
+      await db.none(`
+        UPDATE Users SET active = FALSE, last_active_at = CURRENT_TIMESTAMP WHERE user_id = $1
+      `, [userId]);
+      
+    }
+
+    req.session.destroy(() => res.redirect('/login'));
+  } catch (err) {
+    console.error('Error logging out:', err);
+    res.redirect('/login');
+  }
 });
+
 
 // *****************************************************
 // <!-- Section 10 : Start Server -->
