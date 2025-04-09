@@ -536,7 +536,7 @@ app.get('/logout', async (req, res) => {
   } catch (err) {
     console.error('Error logging out:', err);
     res.redirect('/login');
-  }
+  }});
 
 // Create new group
 app.post('/groups', async (req, res) => {
