@@ -367,6 +367,159 @@ app.post('/groups', async (req, res) => {
   }
 });
 
+const Busboy = require('busboy');
+const fs = require('fs');
+
+
+app.post('/profile/upload', (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const busboy = Busboy({ headers: req.headers });
+  const userId = req.session.user.user_id;
+
+  let filePath = '';
+  let savePath = '';
+  let responseSent = false;
+
+  busboy.on('file', (fieldname, file, { filename, encoding, mimeType }) => {
+    console.log('🔍 File received:');
+    console.log('filename:', filename);
+    console.log('mimeType:', mimeType);
+
+    if (!filename) {
+      file.resume();
+      if (!responseSent) {
+        res.status(400).json({ error: 'No filename' });
+        responseSent = true;
+      }
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(mimeType)) {
+      file.resume();
+      if (!responseSent) {
+        res.status(400).json({ error: 'Invalid file type' });
+        responseSent = true;
+      }
+      return;
+    }
+
+    const ext = path.extname(filename).toLowerCase();
+    const newFilename = `user_${userId}${ext}`;
+    filePath = `/uploads/${newFilename}`;
+    savePath = path.join(__dirname, 'public', filePath);
+
+    // Ensure the uploads directory exists
+    const uploadsDir = path.join(__dirname, 'public', 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    console.log('📦 Saving to:', savePath);
+    const writeStream = fs.createWriteStream(savePath);
+    file.pipe(writeStream);
+  });
+
+  busboy.on('finish', async () => {
+    if (responseSent) return;
+
+    if (!filePath) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    try {
+      await db.none(`UPDATE Users SET profile_picture_url = $1 WHERE user_id = $2`, [filePath, userId]);
+      req.session.user.profile_picture_url = filePath;
+      res.json({ profile_picture_url: filePath });
+    } catch (err) {
+      console.error('DB error:', err);
+      res.status(500).json({ error: 'Failed to save profile picture' });
+    }
+  });
+
+  req.pipe(busboy);
+});
+
+app.post('/profile/update', async (req, res) => {
+  const userId = req.session.user?.user_id;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { email, currentPassword, newPassword, confirmNewPassword } = req.body;
+
+  try {
+    const user = await db.oneOrNone(`SELECT * FROM Users WHERE user_id = $1`, [userId]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // 1. Update email (if changed)
+    if (email && email !== user.email) {
+      await db.none(`UPDATE Users SET email = $1 WHERE user_id = $2`, [email, userId]);
+      req.session.user.email = email;
+    }
+
+    // 2. Handle password update
+    if (newPassword || confirmNewPassword || currentPassword) {
+      if (!currentPassword || !newPassword || !confirmNewPassword) {
+        return res.status(400).json({ error: 'All password fields are required' });
+      }
+
+      const match = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!match) {
+        return res.status(403).json({ error: 'Current password is incorrect' });
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        return res.status(400).json({ error: 'New passwords do not match' });
+      }
+
+      const isSamePassword = await bcrypt.compare(newPassword, user.password_hash);
+      if (isSamePassword) {
+        return res.status(400).json({ error: 'New password cannot be the same as the current password' });
+      }
+
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await db.none(`UPDATE Users SET password_hash = $1 WHERE user_id = $2`, [hashed, userId]);
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating profile:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+const router = express.Router();
+
+
+// Save food preferences
+router.post('/preferences', async (req, res) => {
+  const userId = req.session.user?.user_id; 
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not logged in' });
+  }
+
+  const { cuisines, dietary, priceRange } = req.body;
+
+  try {
+    // INSERT preferences
+    await db.query(`
+      INSERT INTO user_preferences (user_id, cuisines, dietary, price_range)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (user_id)
+      DO UPDATE SET cuisines = EXCLUDED.cuisines,
+                    dietary = EXCLUDED.dietary,
+                    price_range = EXCLUDED.price_range;
+    `, [userId, cuisines, dietary, priceRange]);
+
+    res.json({ message: 'Preferences saved' });
+  } catch (err) {
+    console.error('Error saving preferences:', err);
+    res.status(500).json({ error: 'Server error saving preferences' });
+  }
+});
+app.use('/profile', router);
+
 
 
 app.get('/logout', async (req, res) => {

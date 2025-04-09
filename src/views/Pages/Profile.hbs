@@ -1,203 +1,351 @@
 {{#> layout name="main" }}
 <div class="container py-4">
-    <div class="row">
-        <div class="col-lg-8 mx-auto">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">My Profile</h3>
-                </div>
-                <div class="card-body">
-                    <!-- Profile Info -->
-                    <div class="text-center mb-4">
-                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto mb-3"
-                            style="width: 100px; height: 100px; font-size: 2rem;">
-                            <span>{{#if user}}{{user.username}}{{else}}U{{/if}}</span>
-                        </div>
-                        <h3>{{#if user}}{{user.username}}{{else}}Username{{/if}}</h3>
-                        <p class="text-muted">Member since {{#if user}}{{user.created_at}}{{else}}March 2025{{/if}}</p>
-                    </div>
-
-                    <!-- Profile Tabs -->
-                    <ul class="nav nav-tabs" id="profileTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="preferences-tab" data-bs-toggle="tab"
-                                data-bs-target="#preferences" type="button" role="tab" aria-controls="preferences"
-                                aria-selected="true">Food Preferences</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings"
-                                type="button" role="tab" aria-controls="settings" aria-selected="false">Account
-                                Settings</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history"
-                                type="button" role="tab" aria-controls="history" aria-selected="false">History</button>
-                        </li>
-                    </ul>
-
-                    <div class="tab-content p-3" id="profileTabsContent">
-                        <!-- Food Preferences Tab -->
-                        <div class="tab-pane fade show active" id="preferences" role="tabpanel"
-                            aria-labelledby="preferences-tab">
-                            <form>
-                                <h5 class="mb-3">Your Food Preferences</h5>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Cuisine Types</label>
-                                    <div class="row">
-                                        <div class="col-md-4 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="italian" checked>
-                                                <label class="form-check-label" for="italian">Italian</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="mexican" checked>
-                                                <label class="form-check-label" for="mexican">Mexican</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="chinese" checked>
-                                                <label class="form-check-label" for="chinese">Chinese</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="indian">
-                                                <label class="form-check-label" for="indian">Indian</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="fastfood">
-                                                <label class="form-check-label" for="fastfood">Fast Food</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="thai">
-                                                <label class="form-check-label" for="thai">Thai</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Dietary Restrictions</label>
-                                    <div class="row">
-                                        <div class="col-md-4 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="vegetarian">
-                                                <label class="form-check-label" for="vegetarian">Vegetarian</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="vegan">
-                                                <label class="form-check-label" for="vegan">Vegan</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="glutenFree">
-                                                <label class="form-check-label" for="glutenFree">Gluten-Free</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="priceRange" class="form-label">Price Range</label>
-                                    <select class="form-select" id="priceRange">
-                                        <option value="any">Any</option>
-                                        <option value="$">$ (Inexpensive)</option>
-                                        <option value="$$" selected>$$ (Moderate)</option>
-                                        <option value="$$$">$$$ (Expensive)</option>
-                                        <option value="$$$$">$$$$ (Very Expensive)</option>
-                                    </select>
-                                </div>
-
-                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                    <button type="submit" class="btn btn-primary">Save Preferences</button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <!-- Account Settings Tab -->
-                        <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
-                            <form>
-                                <h5 class="mb-3">Account Information</h5>
-
-                                <div class="mb-3">
-                                    <label for="username" class="form-label">Username</label>
-                                    <input type="text" class="form-control" id="username"
-                                        value="{{#if user}}{{user.username}}{{else}}Current Username{{/if}}" disabled>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="email" class="form-label">Email</label>
-                                    <input type="email" class="form-control" id="email" value="user@example.com">
-                                </div>
-
-                                <h5 class="mb-3 mt-4">Change Password</h5>
-
-                                <div class="mb-3">
-                                    <label for="currentPassword" class="form-label">Current Password</label>
-                                    <input type="password" class="form-control" id="currentPassword">
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="newPassword" class="form-label">New Password</label>
-                                    <input type="password" class="form-control" id="newPassword">
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="confirmNewPassword" class="form-label">Confirm New Password</label>
-                                    <input type="password" class="form-control" id="confirmNewPassword">
-                                </div>
-
-                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                    <button type="submit" class="btn btn-primary">Update Account</button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <!-- History Tab -->
-                        <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
-                            <h5 class="mb-3">Your Recent Activity</h5>
-
-                            <div class="list-group">
-                                <div class="list-group-item list-group-item-action">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h6 class="mb-1">Matched with "Luigi's Italian Restaurant"</h6>
-                                        <small class="text-muted">3 days ago</small>
-                                    </div>
-                                    <p class="mb-1">Group session with JaneSmith, MikeJohnson</p>
-                                </div>
-
-                                <div class="list-group-item list-group-item-action">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h6 class="mb-1">Matched with "Taco Palace"</h6>
-                                        <small class="text-muted">1 week ago</small>
-                                    </div>
-                                    <p class="mb-1">Group session with MikeJohnson</p>
-                                </div>
-
-                                <div class="list-group-item list-group-item-action">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h6 class="mb-1">Matched with "Burger Joint"</h6>
-                                        <small class="text-muted">2 weeks ago</small>
-                                    </div>
-                                    <p class="mb-1">Group session with JaneSmith, MikeJohnson, SarahLee</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <div class="row">
+    <div class="col-lg-8 mx-auto">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h3 class="mb-0">My Profile</h3>
         </div>
+        <div class="card-body">
+          <!-- Profile Info -->
+          <div class="text-center mb-4">
+            <div class="position-relative d-inline-block">
+              {{#if user.profile_picture_url}}
+              <img src="{{user.profile_picture_url}}" alt="Profile Picture" class="rounded-circle"
+                style="width: 100px; height: 100px; object-fit: cover;">
+              {{else}}
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
+                style="width: 100px; height: 100px; font-size: 2rem;">
+                <span>{{charAt user.username 0}}</span>
+              </div>
+              {{/if}}
+              <div class="position-absolute bottom-0 end-0">
+                <label for="profileUpload" class="btn btn-sm btn-light border shadow-sm">
+                  <i class="bi bi-camera"></i>
+                </label>
+                <input id="profileUpload" type="file" name="profile_picture" class="d-none" />
+              </div>
+
+            </div>
+
+            <h3 class="mt-3">{{#if user}}{{user.username}}{{else}}Username{{/if}}</h3>
+            <p class="text-muted">Member since {{#if user}}{{user.created_at}}{{else}}March 2025{{/if}}</p>
+          </div>
+
+          <!-- Profile Tabs -->
+          <ul class="nav nav-tabs" id="profileTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="preferences-tab" data-bs-toggle="tab" data-bs-target="#preferences"
+                type="button" role="tab" aria-controls="preferences" aria-selected="true">Food Preferences</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button"
+                role="tab" aria-controls="settings" aria-selected="false">Account
+                Settings</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button"
+                role="tab" aria-controls="history" aria-selected="false">History</button>
+            </li>
+          </ul>
+
+          <div class="tab-content p-3" id="profileTabsContent">
+<!-- Food Preferences Tab -->
+<div class="tab-pane fade show active" id="preferences" role="tabpanel" aria-labelledby="preferences-tab">
+  <form id="preferencesForm">
+    <h5 class="mb-3">Your Food Preferences</h5>
+
+    <div class="mb-3">
+      <label class="form-label">Cuisine Types</label>
+      <div class="row">
+        {{! All inputs have disabled attribute initially }}
+        <div class="col-md-4 mb-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="italian" name="cuisine" value="italian" checked disabled>
+            <label class="form-check-label" for="italian">Italian</label>
+          </div>
+        </div>
+        <div class="col-md-4 mb-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="mexican" name="cuisine" value="mexican" checked disabled>
+            <label class="form-check-label" for="mexican">Mexican</label>
+          </div>
+        </div>
+        <div class="col-md-4 mb-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="chinese" name="cuisine" value="chinese" checked disabled>
+            <label class="form-check-label" for="chinese">Chinese</label>
+          </div>
+        </div>
+        <div class="col-md-4 mb-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="indian" name="cuisine" value="indian" disabled>
+            <label class="form-check-label" for="indian">Indian</label>
+          </div>
+        </div>
+        <div class="col-md-4 mb-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="fastfood" name="cuisine" value="fastfood" disabled>
+            <label class="form-check-label" for="fastfood">Fast Food</label>
+          </div>
+        </div>
+        <div class="col-md-4 mb-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="thai" name="cuisine" value="thai" disabled>
+            <label class="form-check-label" for="thai">Thai</label>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <div class="mb-3">
+      <label class="form-label">Dietary Restrictions</label>
+      <div class="row">
+        <div class="col-md-4 mb-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="vegetarian" name="diet" value="vegetarian" disabled>
+            <label class="form-check-label" for="vegetarian">Vegetarian</label>
+          </div>
+        </div>
+        <div class="col-md-4 mb-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="vegan" name="diet" value="vegan" disabled>
+            <label class="form-check-label" for="vegan">Vegan</label>
+          </div>
+        </div>
+        <div class="col-md-4 mb-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="glutenFree" name="diet" value="glutenFree" disabled>
+            <label class="form-check-label" for="glutenFree">Gluten-Free</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label for="priceRange" class="form-label">Price Range</label>
+      <select class="form-select" id="priceRange" name="priceRange" disabled>
+        <option value="any">Any</option>
+        <option value="$">$ (Inexpensive)</option>
+        <option value="$$" selected>$$ (Moderate)</option>
+        <option value="$$$">$$$ (Expensive)</option>
+        <option value="$$$$">$$$$ (Very Expensive)</option>
+      </select>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+      <button type="button" id="editPreferencesBtn" class="btn btn-outline-secondary">Edit</button>
+      <button type="submit" id="savePreferencesBtn" class="btn btn-primary d-none">Save</button>
+    </div>
+  </form>
+</div>
+
+            <!-- Account Settings Tab -->
+            <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
+              <form id="accountForm">
+                <h5 class="mb-3">Account Information</h5>
+
+                <div class="mb-3">
+                  <label for="username" class="form-label">Username</label>
+                  <input type="text" class="form-control" id="username" value="{{user.username}}" disabled>
+                </div>
+
+                <div class="mb-3">
+                  <label for="email" class="form-label">Email</label>
+                  <input type="email" class="form-control" id="email" value="{{user.email}}" disabled>
+                </div>
+
+                <div id="passwordSection" class="d-none">
+                  <h5 class="mb-3 mt-4">Change Password</h5>
+                  <div class="mb-3">
+                    <label for="currentPassword" class="form-label">Current Password</label>
+                    <input type="password" class="form-control" id="currentPassword">
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="newPassword" class="form-label">New Password</label>
+                    <input type="password" class="form-control" id="newPassword">
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="confirmNewPassword" class="form-label">Confirm New Password</label>
+                    <input type="password" class="form-control" id="confirmNewPassword">
+                  </div>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                  <button type="button" id="editAccountBtn" class="btn btn-outline-secondary">Edit</button>
+                  <button type="submit" id="saveAccountBtn" class="btn btn-primary d-none">Save</button>
+                </div>
+              </form>
+            </div>
+
+
+            <!-- History Tab -->
+            <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+              <h5 class="mb-3">Your Recent Activity</h5>
+
+              <div class="list-group">
+                <div class="list-group-item list-group-item-action">
+                  <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">Matched with "Luigi's Italian Restaurant"</h6>
+                    <small class="text-muted">3 days ago</small>
+                  </div>
+                  <p class="mb-1">Group session with JaneSmith, MikeJohnson</p>
+                </div>
+
+                <div class="list-group-item list-group-item-action">
+                  <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">Matched with "Taco Palace"</h6>
+                    <small class="text-muted">1 week ago</small>
+                  </div>
+                  <p class="mb-1">Group session with MikeJohnson</p>
+                </div>
+
+                <div class="list-group-item list-group-item-action">
+                  <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">Matched with "Burger Joint"</h6>
+                    <small class="text-muted">2 weeks ago</small>
+                  </div>
+                  <p class="mb-1">Group session with JaneSmith, MikeJohnson, SarahLee</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    document.getElementById('profileUpload').addEventListener('change', async function () {
+      const file = this.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('profile_picture', file); // NAME MUST MATCH server expectation
+
+      try {
+        const res = await fetch('/profile/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await res.json();
+
+        if (res.ok && result.profile_picture_url) {
+          const profileImg = document.querySelector('.card-body img.rounded-circle');
+          if (profileImg) {
+            profileImg.src = `${result.profile_picture_url}?t=${Date.now()}`;
+          }
+        } else {
+          console.error(result.error || 'Upload failed');
+        }
+      } catch (err) {
+        console.error('Upload error:', err);
+      }
+    });
+
+    document.getElementById('editAccountBtn').addEventListener('click', function () {
+      const emailInput = document.getElementById('email');
+      const passwordSection = document.getElementById('passwordSection');
+      const saveBtn = document.getElementById('saveAccountBtn');
+
+      emailInput.removeAttribute('disabled');
+      passwordSection.classList.remove('d-none');
+      this.classList.add('d-none');
+      saveBtn.classList.remove('d-none');
+    });
+
+    document.getElementById('accountForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+      try {
+        const res = await fetch('/profile/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            currentPassword,
+            newPassword,
+            confirmNewPassword
+          })
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          alert('Profile updated successfully!');
+
+          // Disable fields again
+          document.getElementById('email').setAttribute('disabled', true);
+          document.getElementById('passwordSection').classList.add('d-none');
+          document.getElementById('saveAccountBtn').classList.add('d-none');
+          document.getElementById('editAccountBtn').classList.remove('d-none');
+
+          // Optionally reset the form
+          document.getElementById('accountForm').reset();
+        } else {
+          alert(result.error || 'Update failed.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert(' Server error occurred.');
+      }
+    });
+
+document.getElementById('editPreferencesBtn').addEventListener('click', function () {
+  const form = document.getElementById('preferencesForm');
+  const inputs = form.querySelectorAll('input, select');
+  const saveBtn = document.getElementById('savePreferencesBtn');
+
+  inputs.forEach(input => input.removeAttribute('disabled'));
+  this.classList.add('d-none');
+  saveBtn.classList.remove('d-none');
+});
+
+document.getElementById('preferencesForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+
+  const form = e.target;
+
+  const selectedCuisines = Array.from(form.querySelectorAll('input[name="cuisine"]:checked')).map(input => input.value);
+  const selectedDiet = Array.from(form.querySelectorAll('input[name="diet"]:checked')).map(input => input.value);
+  const priceRange = form.priceRange.value;
+
+  try {
+    const res = await fetch('/profile/preferences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cuisines: selectedCuisines,
+        dietary: selectedDiet,
+        priceRange
+      })
+    });
+
+    const result = await res.json();
+
+    if (res.ok) {
+      alert('Preferences updated!');
+      const inputs = form.querySelectorAll('input, select');
+      inputs.forEach(input => input.setAttribute('disabled', true));
+      document.getElementById('savePreferencesBtn').classList.add('d-none');
+      document.getElementById('editPreferencesBtn').classList.remove('d-none');
+    } else {
+      alert(result.error || 'Update failed.');
+    }
+  } catch (err) {
+    console.error(err);
+    alert(' Server error.');
+  }
+});
+
+
+  </script>
 </div>
 {{/layout}}

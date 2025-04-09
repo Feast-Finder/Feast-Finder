@@ -17,14 +17,14 @@
         <!-- Left links -->
         <ul class="navbar-nav me-auto">
           <li class="nav-item">
-            <a class="nav-link" {{#if user}}href="/home"{{else}}href="/"{{/if}} >Home</a>
+            <a class="nav-link" {{#if user}}href="/home"{{else}}href="/"{{/if}}>Home</a>
           </li>
         </ul>
 
         <!-- Right links (auth section) -->
         <ul class="navbar-nav ms-auto">
           {{#if user}}
-           <!-- Minigames Dropdown -->
+          <!-- Minigames Dropdown -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="minigamesDropdown" role="button" data-bs-toggle="dropdown"
               aria-expanded="false">
@@ -36,13 +36,22 @@
               <li><a class="dropdown-item" href="/home">Minigame 3</a></li>
             </ul>
           </li>
+
+          <!-- Profile Dropdown -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button"
               data-bs-toggle="dropdown" aria-expanded="false">
+
+              {{#if user.profile_picture_url}}
+              <img src="{{user.profile_picture_url}}" alt="Profile Picture" class="rounded-circle me-2"
+                style="width: 30px; height: 30px; object-fit: cover;">
+              {{else}}
               <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
                 style="width: 30px; height: 30px; font-size: 0.9rem;">
                 <span>{{charAt user.username 0}}</span>
               </div>
+              {{/if}}
+
               <span>{{user.username}}</span>
             </a>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
@@ -52,6 +61,7 @@
               <li><a class="dropdown-item" href="/logout">Logout</a></li>
             </ul>
           </li>
+
           {{else}}
           <li class="nav-item">
             <a class="nav-link" href="/login">Login</a>
@@ -65,4 +75,3 @@
     </div>
   </nav>
 </header>
-

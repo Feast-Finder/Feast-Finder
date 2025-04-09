@@ -2,7 +2,7 @@
 CREATE TYPE swipe_direction_enum AS ENUM ('left', 'right');
 
 -- 1. Users Table
--- 1. Users Table
+
 CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
@@ -12,8 +12,10 @@ CREATE TABLE IF NOT EXISTS users (
     location_longitude DECIMAL(10, 6),
     active BOOLEAN DEFAULT TRUE,
     last_active_at TIMESTAMP WITH TIME ZONE,
+    profile_picture_url TEXT, -- ✅ New field added
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
 
 COMMENT ON TABLE users IS 'Stores information about users of the Feast Finder app.';
 COMMENT ON COLUMN users.user_id IS 'Unique identifier for each user.';
@@ -24,6 +26,7 @@ COMMENT ON COLUMN users.location_latitude IS 'User''s current latitude.';
 COMMENT ON COLUMN users.location_longitude IS 'User''s current longitude.';
 COMMENT ON COLUMN users.active IS 'Indicates whether the user account is currently active.';
 COMMENT ON COLUMN users.last_active_at IS 'The last time the user was active (logged in or out).';
+COMMENT ON COLUMN users.profile_picture_url IS 'URL to the user''s profile picture (can be uploaded or linked to external avatar).';
 COMMENT ON COLUMN users.created_at IS 'Timestamp when the user account was created.';
 
 
@@ -167,6 +170,16 @@ COMMENT ON COLUMN Matches.match_id IS 'Unique identifier for each match.';
 COMMENT ON COLUMN Matches.group_id IS 'ID of the group that matched.';
 COMMENT ON COLUMN Matches.restaurant_id IS 'ID of the matched restaurant.';
 COMMENT ON COLUMN Matches.matched_at IS 'Timestamp when the match was determined.';
+
+
+
+CREATE TABLE user_preferences (
+  user_id INTEGER PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+  cuisines TEXT[],              
+  dietary TEXT[],               
+  price_range TEXT              
+);
+
 
 -- Indexes for Matches table
 CREATE INDEX idx_matches_group_id ON Matches (group_id);
