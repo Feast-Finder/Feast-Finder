@@ -537,6 +537,41 @@ app.get('/logout', async (req, res) => {
     console.error('Error logging out:', err);
     res.redirect('/login');
   }
+
+// Create new group
+app.post('/groups', async (req, res) => {
+  try {
+    const groupId = Date.now(); // Use timestamp as group ID
+    const newGroup = {
+      group_id: groupId,
+      name: req.body.name || 'Solo Session',
+      created_by: req.session.user.user_id,
+      location: req.body.location || 'No Location', // Location not needed for minigames
+      created_at: new Date(),
+      active: true,
+      members: [req.session.user.user_id]
+    };
+    
+    // Add friends to the group if provided
+    if (req.body.friends && Array.isArray(req.body.friends)) {
+      for (const friendId of req.body.friends) {
+        const userFriends = friends.get(req.session.user.user_id) || [];
+        if (userFriends.includes(parseInt(friendId))) {
+          newGroup.members.push(parseInt(friendId));
+        }
+      }
+    }
+
+    groups.set(groupId, newGroup);
+    res.json({ success: true, group_id: groupId });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: 'Failed to create group' });
+  }
+});
+
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => res.redirect('/login'));
 });
 
 
