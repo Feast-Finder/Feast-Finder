@@ -1,3 +1,4 @@
+
 services:
   db:
     image: postgres:14
@@ -7,7 +8,8 @@ services:
     volumes:
       - feast-finder:/var/lib/postgresql/data
       - ./src/init_data:/docker-entrypoint-initdb.d
-  web:
+
+  web1:
     image: node:lts
     user: 'node'
     working_dir: /repository
@@ -17,10 +19,25 @@ services:
     depends_on:
       - db
     ports:
-      - '3000:3000'
+      - '3001:3000'
     volumes:
       - ./:/repository
-   #command: 'npm run testandrun' #use testandrun for testing only it messes up the db otherwise. for normal use change back to npm start 
     command: 'npm start'
+
+  web2:
+    image: node:lts
+    user: 'node'
+    working_dir: /repository
+    env_file: .env
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - db
+    ports:
+      - '3002:3000'
+    volumes:
+      - ./:/repository
+    command: 'npm start'
+
 volumes:
   feast-finder:

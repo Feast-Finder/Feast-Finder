@@ -37,12 +37,9 @@
                         </li>
                         {{/each}}
                     </ul>
-
-
-
-
                     {{else}}
-                    <p class="text-muted">You don't have any friends yet. Send a friend request to get started!</p>
+                    <p class="text-muted" id="noFriendsMessage">You don't have any friends yet. Send a friend request to get started!</p>
+                    <ul class="list-group d-none" id="friendsList"></ul> <!-- hidden placeholder to show later -->
                     {{/if}}
                 </div>
             </div>
@@ -62,6 +59,7 @@
                 </div>
             </div>
         </div>
+
         <!-- Past Sessions -->
         <div class="card shadow">
             <div class="card-header bg-secondary text-white">
@@ -87,6 +85,7 @@
                 </div>
             </div>
         </div>
+
         <!-- Friend Profile Modal -->
         <div class="modal fade" id="friendProfileModal" tabindex="-1" aria-labelledby="friendModalLabel"
             aria-hidden="true">
@@ -98,11 +97,9 @@
                     </div>
                     <div class="modal-body">
                         <p><strong>Username:</strong> <span id="modalUsername"></span></p>
-                        <!-- Add more info below if needed -->
                         <p><strong>Email:</strong> <span id="modalEmail"></span></p>
                         <p><strong>Joined:</strong> <span id="modalJoined"></span></p>
                         <p><strong>Last Active:</strong> <span id="modalLastActive"></span></p>
-
                     </div>
                 </div>
             </div>
@@ -144,10 +141,9 @@
 
     function attachProfileModalHandlers() {
       document.querySelectorAll('.view-profile').forEach(link => {
-        link.onclick = null; // remove duplicates
+        link.onclick = null;
         link.addEventListener('click', async (e) => {
           e.preventDefault();
-
           const userId = link.dataset.userId;
 
           try {
@@ -164,13 +160,22 @@
 
             document.getElementById('modalLastActive').textContent = lastActive;
 
-            const modal = new bootstrap.Modal(document.getElementById('friendProfileModal'));
+            const modalElement = document.getElementById('friendProfileModal');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
             modal.show();
+
           } catch (err) {
             console.error('Error fetching profile:', err);
             alert('Could not load profile.');
           }
         });
+      });
+
+      // Clean up stuck backdrops if needed
+      const modalElement = document.getElementById('friendProfileModal');
+      modalElement.addEventListener('hidden.bs.modal', () => {
+        document.body.classList.remove('modal-open');
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
       });
     }
 
@@ -178,7 +183,6 @@
     document.querySelectorAll('.remove-friend').forEach(attachRemoveFriend);
     attachProfileModalHandlers();
 
-    // Handle friend search
     searchInput.addEventListener('input', async () => {
       const query = searchInput.value.trim();
       if (!query) {
@@ -237,6 +241,7 @@
                 if (res.ok) {
                   li.remove();
                   noFriendsMessage?.remove();
+                  friendsList.classList.remove('d-none'); // make list visible
 
                   const newFriend = document.createElement('li');
                   newFriend.className = 'list-group-item d-flex justify-content-between align-items-center';
@@ -252,13 +257,11 @@
                       Remove
                     </button>
                   `;
-                  friendsList.appendChild(newFriend);
 
-                  // Reattach modal & remove handlers
+                  friendsList.appendChild(newFriend);
                   attachRemoveFriend(newFriend.querySelector('.remove-friend'));
                   attachProfileModalHandlers();
 
-                  // 🔃 Sort friends list by active status
                   const allFriends = Array.from(friendsList.querySelectorAll('li'));
                   allFriends.sort((a, b) => {
                     const aActive = a.querySelector('.badge')?.classList.contains('bg-success') ? 1 : 0;
@@ -269,7 +272,6 @@
                   friendsList.innerHTML = '';
                   allFriends.forEach(li => friendsList.appendChild(li));
 
-                  // Refresh search list
                   searchInput.dispatchEvent(new Event('input'));
                 } else {
                   addButton.textContent = 'Error';
@@ -286,14 +288,12 @@
           resultsBox.appendChild(li);
         });
 
-        // Attach modal handlers for new search results
         attachProfileModalHandlers();
       } catch (error) {
         console.error('Search error:', error);
       }
     });
 
-    // Hide dropdown if clicking outside
     document.addEventListener('click', (event) => {
       const isClickInside = searchInput.contains(event.target) || resultsBox.contains(event.target);
       if (!isClickInside) {
@@ -302,7 +302,7 @@
     });
   });
 </script>
-    </div>
+</div>
 </div>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
