@@ -1,4 +1,7 @@
+
 {{#> layout name="main" }}
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 <div class="container pt-3">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
@@ -79,15 +82,16 @@
                         <label class="form-label">Friends (optional)</label>
                         <div id="friendSelection">
                             {{#if friends}}
-                            <div class="mb-2">
-                                <select id="friendSelect" class="form-select mb-2">
-                                    <option value="">Select a friend to add</option>
-                                    {{#each friends}}
-                                    <option value="{{this.user_id}}">{{this.username}}</option>
-                                    {{/each}}
-                                </select>
-                                <button type="button" id="addFriendBtn" class="btn btn-sm btn-outline-primary">Add Friend</button>
-                            </div>
+          <div class="mb-3">
+            <label for="friendUsername" class="form-label">Invite a Friend</label>
+            <select id="friendUsername" class="form-select">
+              <option value="">Select a friend</option>
+              {{#each friends}}
+                <option value="{{this.username}}">{{this.username}}</option>
+              {{/each}}
+            </select>
+          </div>
+
                             <div id="selectedFriends" class="d-flex flex-wrap gap-2 my-2"></div>
                             {{else}}
                             <p class="text-muted fst-italic">No friends available. <a href="/friends">Add friends</a> to invite them.</p>
@@ -150,6 +154,38 @@
         </div>
     </div>
 </div>
+<!-- Waiting Overlay -->
+<div id="waitingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-75 text-white fw-bold fs-4 d-none" style="z-index: 1050;">
+  Waiting on your friend to join the session...
+</div>
+
+
+<!-- Invitation Modal -->
+<div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="inviteModalLabel">Swipe Session Invite</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        A friend invited you to join a swiping session.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="joinSwipeBtn">Join Swiping</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const modalEl = document.getElementById('inviteModal');
+    console.log('🔍 Test: inviteModalEl is', modalEl);
+  });
+</script>
+
+
+
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 <style>
@@ -215,8 +251,177 @@
     }
 </style>
 
+<!-- Socket.IO Client Script -->
+
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxYA0OMGoBZ093MoeamguWrt7jfxl44EU&libraries=places&loading=async&callback=initMap"></script>
-<script>
+<script src="/socket.io/socket.io.js"></script>
+<script>    
+   
+     const socket = io();
+
+  document.addEventListener('DOMContentLoaded', () => {
+console.log('🚀 DOM loaded and JS running');
+
+     console.log('✅ Socket initialized:', socket);
+
+    const userId = {{user.user_id}};
+    console.log('Loaded userId from template:', userId);
+
+    let groupId = null;
+
+
+
+socket.on('connect', () => {
+  console.log('✅ Connected, socket id:', socket.id);
+  socket.emit('register-user', { userId });
+});
+
+    console.log('✅ Registered user', userId);
+
+console.log('📡 Setting up invite listener'); // A — you’re attaching the listener
+
+let sessionLat = null;
+let sessionLng = null;
+let types = Array.from(document.querySelectorAll('.form-check-input:checked'))
+
+
+socket.on('invite-user-to-session', ({ groupId, lat, lng, types }) => {
+  console.log('🔥 invite-user-to-session event received');
+  console.log('🔔 About to show the invite modal for group:', groupId);
+  sessionLat = lat;
+  sessionLng = lng;
+  sessionTypes = types || [];
+  const inviteModalEl = document.getElementById('inviteModal');
+  const joinBtn = document.getElementById('joinSwipeBtn');
+
+  if (!inviteModalEl || !joinBtn) {
+    console.error('❌ Modal or button missing');
+    return;
+  }
+
+  const modal = bootstrap.Modal.getOrCreateInstance(inviteModalEl);
+  modal.show();
+  console.log('✅ Modal.show() called');
+
+  joinBtn.onclick = () => {
+    console.log('📬 Accepting invite for group', groupId);
+  socket.emit('join-session', { groupId, userId });
+  socket.emit('accept-session-invite', { groupId, userId });
+  socket.emit('ready-to-swipe', { groupId, userId }); // ✅ THIS IS KEY FOR THE RECEIVER
+    modal.hide();
+    document.body.classList.remove('modal-open');
+document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+
+  };
+});
+
+    // START SESSION
+    document.getElementById('startSessionBtn')?.addEventListener('click', async () => {
+      const groupName = document.getElementById('groupName')?.value || 'Session';
+      const friendUsername = document.getElementById('friendUsername')?.value;
+
+      if (!friendUsername) {
+        alert('Please select a friend to invite.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/groups', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+  name: groupName,
+  location,
+  lat: 40.014984, 
+  lng: -105.270546
+})
+        });
+
+if (!res.ok) {
+  const text = await res.text();
+  console.error('❌ Server returned error:', res.status, text);
+  alert('Failed to start session');
+  return;
+}
+        const data = await res.json();
+        if (!data.success) {
+          alert('Failed to start session');
+          return;
+        }
+
+        groupId = data.group_id;
+        console.log('✅ Group created with ID:', groupId);
+
+        // Join own group room
+        socket.emit('join-session', { groupId, userId });
+socket.on('friend-accepted-invite', () => {
+  socket.emit('ready-to-swipe', { groupId, userId });
+});
+
+
+        // Send invite to friend
+setTimeout(() => {
+  console.log('📨 Emitting invite-user-by-username', friendUsername, groupId);
+  console.log(`📤 Sending invite with types:`, types);
+  const selectedTypes = Array.from(document.querySelectorAll('.form-check-input:checked'))
+  .map(cb => cb.value)
+  .filter(v => v !== 'on');
+
+  socket.emit('invite-user-by-username', {
+    username: friendUsername,
+    groupId,
+    lat: 40.014984, 
+    lng: -105.270546,
+    types: selectedTypes
+  });
+}, 1000); 
+
+
+        // Optionally show waiting UI here
+        document.getElementById('waitingOverlay')?.classList.remove('d-none');
+
+   } catch (err) {
+console.error('❌ Geocoding or session start error:', err);
+
+if (err instanceof Response) {
+  try {
+    const errorText = await err.text();
+    console.error('📨 Server responded with:', errorText);
+  } catch (innerErr) {
+    console.error('❌ Failed to parse server error:', innerErr);
+  }
+} else if (err instanceof Error) {
+  console.error('🧠 Error message:', err.message);
+  console.error('🧠 Stack trace:', err.stack);
+} else {
+  console.error('🧩 Unknown error object:', JSON.stringify(err));
+}
+
+  alert('Failed to start session');
+}
+
+    });
+
+    // RECEIVE INVITE
+
+
+    // START SWIPING
+
+socket.emit('register-user', { userId }, () => {
+  console.log('🧠 Confirmed user registered on server');
+  socket.emit('ready-for-invites', { userId });  // <- this is key
+});
+
+
+  });
+
+
+
+
+
+
+
+
     let currentRestaurants = [];
     let currentIndex = 0;
     let currentGroupId = null;
@@ -246,7 +451,7 @@
         // Initialize services with the map
         service = new google.maps.places.PlacesService(map);
         autocompleteService = new google.maps.places.AutocompleteService();
-
+    
         // Initialize UI elements
         const likeBtn = document.getElementById('like-btn');
         const dislikeBtn = document.getElementById('dislike-btn');
@@ -261,6 +466,8 @@
         const addFriendBtn = document.getElementById('addFriendBtn');
         const friendSelect = document.getElementById('friendSelect');
         const selectedFriendsDiv = document.getElementById('selectedFriends');
+        const friendUsername = document.getElementById('friendUsername').value || null;
+
 
         const modal = new bootstrap.Modal(startSessionModal);
 
@@ -340,9 +547,6 @@
             }
         }
 
-        startSessionBtn.addEventListener('click', async function () {
-let geocodedLat = null;
-let geocodedLng = null;
 
 startSessionBtn.addEventListener('click', async function () {
   const location = locationInput.value;
@@ -365,8 +569,9 @@ startSessionBtn.addEventListener('click', async function () {
       });
     });
 
-    geocodedLat = geoResults[0].geometry.location.lat();
-    geocodedLng = geoResults[0].geometry.location.lng();
+const geocodedLat = 40.014984;
+const geocodedLng =  -105.270546;
+
     console.log('Geocoded:', geocodedLat, geocodedLng);
 
     // Send group creation request to backend
@@ -389,7 +594,7 @@ startSessionBtn.addEventListener('click', async function () {
     if (data.success) {
       currentGroupId = data.group_id;
       console.log('Group created with ID:', currentGroupId);
-      searchNearbyRestaurants({ lat: geocodedLat, lng: geocodedLng });
+
 
       contentOverlay.style.opacity = '0';
       setTimeout(() => {
@@ -399,6 +604,9 @@ startSessionBtn.addEventListener('click', async function () {
       }, 500);
 
       modal.hide();
+      document.body.classList.remove('modal-open');
+document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+
     } else {
       console.error('Group creation failed:', data.error);
       alert('Failed to start session');
@@ -409,26 +617,24 @@ startSessionBtn.addEventListener('click', async function () {
   }
 });
 
-        });
+       
 
-        function searchNearbyRestaurants(location) {
+        function searchNearbyRestaurants(location, SelectedTypes =[]) {
             console.log('Searching for restaurants near:', location);
-            const request = {
-                location: location,
-                radius: 5000,  // 5km radius
-                type: 'restaurant'
-            };
-
+  const request = {
+    location: location,
+    radius: 5000,
+    type: 'restaurant'
+  };
+  if (SelectedTypes.length > 0) {
+    request.keyword = SelectedTypes.join(' ');
+  }
             // Add restaurant type filters if selected
-            const selectedTypes = Array.from(document.querySelectorAll('.form-check-input:checked'))
-                .map(cb => cb.value)
-                .filter(v => v !== 'on');
-            
-            if (selectedTypes.length > 0) {
-                // For the Places API, we can only use one type at a time,
-                // so we'll set the type to restaurant and use the selected types as keywords
-                request.keyword = selectedTypes.join(' ');
-            }
+   const selectedTypes = (SelectedTypes.length > 0) ? SelectedTypes : [];
+
+  if (selectedTypes.length > 0) {
+    request.keyword = selectedTypes.join(' ');
+  }
 
             console.log('Places API request:', request);
             
@@ -700,12 +906,36 @@ startSessionBtn.addEventListener('click', async function () {
                 }
             }
         });
-    }
+    
+socket.on('start-swiping', ({ lat, lng, types }) => {
+  console.log('🚀 All users ready — swiping begins!');
+  console.log('🎯 Received filter types on receiver:', types);
+  document.getElementById('waitingOverlay')?.classList.add('d-none');
+  
+  // 💡 Only now remove the gray overlay
+  contentOverlay.style.opacity = '0';
+  setTimeout(() => {
+    contentOverlay.style.display = 'none';
+    likeBtn.removeAttribute('disabled');
+    dislikeBtn.removeAttribute('disabled');
+  }, 500);
+
+  if (lat && lng) {
+    console.log('📍 Fetching restaurants as receiver...');
+    searchNearbyRestaurants({ lat: parseFloat(lat), lng: parseFloat(lng) }, types || []);
+  }
+
+  likeBtn.removeAttribute('disabled');
+  dislikeBtn.removeAttribute('disabled');
+});
+}
 
     // If the API has already loaded, initialize the map
     if (window.google && window.google.maps) {
         console.log("Google Maps already loaded, initializing map");
         initMap();
     }
-</script>
+window.initMap = initMap;
+
+    </script>
 {{/layout}}

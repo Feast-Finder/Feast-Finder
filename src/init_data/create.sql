@@ -1,7 +1,7 @@
 -- Create the ENUM type for swipe direction
 CREATE TYPE swipe_direction_enum AS ENUM ('left', 'right');
 
-CREATE DATABASE IF NOT EXISTS Feast_Finder_DB;
+--CREATE DATABASE IF NOT EXISTS Feast_Finder_DB;
 -- 1. Users Table
 
 CREATE TABLE IF NOT EXISTS users (
@@ -225,3 +225,23 @@ CREATE INDEX idx_matches_restaurant_id ON Matches (restaurant_id);
 -- COMMENT ON COLUMN UserSwipeAggregates.left_swipe_count IS 'Number of left swipes by the user for this restaurant.';
 -- COMMENT ON COLUMN UserSwipeAggregates.right_swipe_count IS 'Number of right swipes by the user for this restaurant.';
 -- COMMENT ON COLUMN UserSwipeAggregates.last_swiped_at IS 'Timestamp of the most recent swipe.';
+CREATE TABLE IF NOT EXISTS SwipeSessions (
+    session_id SERIAL PRIMARY KEY,
+    user_id_1 INTEGER NOT NULL,
+    user_id_2 INTEGER NOT NULL,
+    status VARCHAR(20) DEFAULT 'waiting', -- waiting, active, complete
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP WITH TIME ZONE,
+    group_id INTEGER, -- optional, if tied to a group swipe
+    FOREIGN KEY (user_id_1) REFERENCES Users(user_id),
+    FOREIGN KEY (user_id_2) REFERENCES Users(user_id),
+    FOREIGN KEY (group_id) REFERENCES Groups(group_id),
+    UNIQUE (user_id_1, user_id_2)
+);
+
+COMMENT ON TABLE SwipeSessions IS 'Tracks a swiping session between two friends.';
+COMMENT ON COLUMN SwipeSessions.session_id IS 'Unique identifier for the session.';
+COMMENT ON COLUMN SwipeSessions.user_id_1 IS 'First user in the swipe session.';
+COMMENT ON COLUMN SwipeSessions.user_id_2 IS 'Second user in the swipe session.';
+COMMENT ON COLUMN SwipeSessions.status IS 'waiting (waiting on friend), active (both online), or complete.';
+COMMENT ON COLUMN SwipeSessions.group_id IS 'Optional group context for the session.';
