@@ -25,4 +25,6 @@ jobs:
           ssh feast@20.3.255.58 <<EOF
             cd /home/feast/Feast-Finder
             git pull origin main
+            docker compose down
+            docker compose up -d
           EOF
