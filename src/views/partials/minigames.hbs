@@ -1,15 +1,15 @@
 <div class="modal fade" id="selectMinigameModal" tabindex="-1" aria-labelledby="selectMinigameModalLabel" aria-hidden="true">
-<div class="modal-dialog">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h5 class="modal-title" id="selectMinigameModalLabel">Select Minigame</h5>
-      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-    </div>
-    <div class="modal-body">
-      <form id="minigameForm">
-        <div class="mb-3">
-          <label for="groupName" class="form-label">Group Name (optional)</label>
-          <input type="text" class="form-control" id="groupName" placeholder="Enter a name for your group">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="selectMinigameModalLabel">Select Minigame</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="minigameForm">
+          <div class="mb-3">
+            <label for="groupName" class="form-label">Group Name (optional)</label>
+            <input type="text" class="form-control" id="groupName" placeholder="Enter a name for your group">
           </div>
 
           <div class="mb-3">
@@ -36,12 +36,11 @@
             <label class="form-label">Select Minigame</label>
             <select class="form-select" id="minigameSelect" aria-label="Select Minigame">
               <option selected>Choose a Minigame</option>
-              <option value="minigame1">Minigame 1</option>
+              <option value="minigame1">Minigame 1 (Hot Potato)</option>
               <option value="minigame2">Minigame 2</option>
               <option value="minigame3">Minigame 3</option>
             </select>
           </div>
-
         </form>
       </div>
       <div class="modal-footer">
@@ -52,22 +51,39 @@
   </div>
 </div>
 
+<!-- Minigame 1 Modal: Integrated Hot Potato Game -->
 <div class="modal fade" id="minigameModal1" tabindex="-1" aria-labelledby="minigame1ModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg"><!-- enlarged dialog for game UI -->
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="minigame1ModalLabel">Minigame 1</h5>
+        <h5 class="modal-title" id="minigame1ModalLabel">Hot Potato</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
+        <!-- Hot Potato Game UI -->
+        <div id="hotPotatoGame" class="game-container">
+          <div id="playersContainer">
+            <!-- Player avatars and usernames will be rendered here -->
+          </div>
+          <div id="potatoContainer">
+            <!-- Hot Potato Image (placeholder) -->
+            <img id="potatoImage" src="../public/uploads/potato.png">
+          </div>
+          <div id="controls">
+            <button id="startHotPotatoBtn">Start Game</button>
+            <button id="passPotatoBtn" style="display:none;" disabled>Pass Potato</button> <!-- Added inline style to hide initially -->
+          </div>
+          <div id="gameStatus"></div>
+        </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel Game</button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Minigame 2 Modal (unchanged) -->
 <div class="modal fade" id="minigameModal2" tabindex="-1" aria-labelledby="minigame2ModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -84,6 +100,7 @@
   </div>
 </div>
 
+<!-- Minigame 3 Modal (unchanged) -->
 <div class="modal fade" id="minigameModal3" tabindex="-1" aria-labelledby="minigame3ModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -100,4 +117,6 @@
   </div>
 </div>
 
+<!-- Ensure that Socket.IO client library is loaded -->
+<script src="/socket.io/socket.io.js"></script>
 <script src="/js/minigames.js"></script>
