@@ -16,9 +16,9 @@ jobs:
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H your-server-address >> ~/.ssh/known_hosts
+          ssh-keyscan -H 20.3.255.58 >> ~/.ssh/known_hosts
 
       - name: Trigger git pull on server
         run: |
