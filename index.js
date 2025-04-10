@@ -1,29 +1,51 @@
+
+
+
+
+
 // *****************************************************
 // <!-- Section 1 : Import Dependencies -->
 // *****************************************************
 const express = require('express');
 const app = express();
+const http = require('http').createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(http);
+const { createAdapter } = require('@socket.io/redis-adapter');
+const { createClient } = require('ioredis');
+
+const pubClient = createClient({ host: 'redis', port: 6379 });
+const subClient = pubClient.duplicate();
+
+io.adapter(createAdapter(pubClient, subClient));
+
+pubClient.on('connect', () => console.log('✅ Redis pubClient connected'));
+subClient.on('connect', () => console.log('✅ Redis subClient connected'));
+
+
 const handlebars = require('express-handlebars');
 const Handlebars = require('handlebars');
-
-Handlebars.registerHelper('charAt', function (str, index) {
-  return str && str.charAt(index);
-});
-
-
 const path = require('path');
 const pgp = require('pg-promise')();
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
+require('dotenv').config();
+
+// Store active swipe sessions and readiness state
+const activeSessions = new Map(); // { groupId: { users: Set, ready: Set } }
+
+Handlebars.registerHelper('charAt', function (str, index) {
+  return str && str.charAt(index);
+});
 
 // *****************************************************
 // <!-- Section 2 : Connect to DB -->
 // *****************************************************
 const hbs = handlebars.create({
   extname: 'hbs',
-  layoutsDir: __dirname + '/src/views/layouts',
-  partialsDir: __dirname + '/src/views/partials',
+  layoutsDir: path.join(__dirname, '/src/views/layouts'),
+  partialsDir: path.join(__dirname, '/src/views/partials'),
 });
 
 const dbConfig = {
@@ -60,48 +82,13 @@ app.use(session({
 }));
 
 // *****************************************************
-// <!-- Section 4 : Sample Test Data (In-Memory) -->
-// *****************************************************
-const TEST_USER = {
-  username: 'java2022',
-  password: '$2a$10$YourHashedPasswordHere',
-  user_id: 1
-};
-
-const USERS = [
-  TEST_USER,
-  { username: 'testuser1', password: '1234', user_id: 2 },
-  { username: 'testuser2', password: '1234', user_id: 3 },
-  { username: 'testuser3', password: '1234', user_id: 4 }
-];
-
-const groups = new Map();
-const votes = new Map();
-const friends = new Map();
-const friendRequests = new Map();
-
-friends.set(1, [2, 3]);
-friends.set(2, [1]);
-friends.set(3, [1]);
-friends.set(4, []);
-
-friendRequests.set(1, [4]);
-friendRequests.set(2, []);
-friendRequests.set(3, []);
-friendRequests.set(4, []);
-
-// *****************************************************
-// <!-- Section 5 : Middleware -->
+// <!-- Section 4 : Middleware -->
 // *****************************************************
 app.use((req, res, next) => {
   res.locals.user = req.session.user;
   next();
 });
 
-const auth = (req, res, next) => {
-  if (!req.session.user) return res.redirect('/login');
-  next();
-};
 
 // *****************************************************
 // <!-- Section 6 : Public Routes -->
@@ -203,6 +190,14 @@ app.get('/friends_test', async (req, res) => {
     res.status(500).json({ error: 'Failed to load friends' });
   }
 });
+// Middleware
+const auth = (req, res, next) => {
+  if (!req.session.user) return res.redirect('/login');
+  next();
+};
+
+app.use(auth); // This line must come after the function is defined
+
 // *****************************************************
 // <!-- Section 8 : Authenticated Routes -->
 // *****************************************************
@@ -257,6 +252,45 @@ app.get('/friends', async (req, res) => {
   } catch (error) {
     console.error('Error fetching friends:', error);
     res.render('Pages/friends', { error: 'Failed to load friends' });
+  }
+});
+app.post('/session/invite', async (req, res) => {
+  try {
+    const currentUserId = req.session.userId;              // ID of the current user (inviter)
+    const friendUsername = req.body.friendUsername;        // username entered in the form
+
+    // 1. Lookup the friend's user ID by username
+    const [[userRow]] = await db.execute(
+      'SELECT id FROM users WHERE username = ?', 
+      [friendUsername]
+    );
+    if (!userRow) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    const friendId = userRow.id;
+
+    // 2. (Optional) Verify friendship exists
+    const [[friendshipRow]] = await db.execute(
+      'SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ?', 
+      [currentUserId, friendId]
+    );
+    if (!friendshipRow) {
+      return res.status(403).json({ success: false, message: "User is not in your friends list" });
+    }
+
+    // 3. Create a new swipe session (for simplicity, just an object here)
+    const sessionId = createSession(currentUserId, friendId);  // assume this returns a session identifier
+    // e.g., you might insert into a sessions table and get an ID, and also insert into a session_members table.
+
+    // 4. Emit invite to the friend via Socket.IO
+    const invitePayload = { sessionId, fromUsername: req.user.username };
+    io.to(friendId.toString()).emit('sessionInvite', invitePayload);
+
+    // 5. Respond to the inviter
+    return res.json({ success: true, sessionId });
+  } catch (err) {
+    console.error("Error inviting friend:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -362,8 +396,8 @@ app.post('/groups', async (req, res) => {
 
     res.json({ success: true, group_id: group.group_id });
   } catch (err) {
-    console.error('Error creating group:', err);
-    res.status(500).json({ success: false, error: 'Failed to create group' });
+    console.error('❌ Error in POST /groups:', err); // <<< Make sure this exists
+    res.status(500).send('Internal Server Error: ' + err.message);
   }
 });
 
@@ -574,9 +608,198 @@ app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
+// *****************************************************
+// <!-- Section 6 : Socket.IO Real-Time Sync Logic -->
+// *****************************************************
+
+const readyForInvite = new Set(); // userId → is ready
+const activeGroups = new Map();  // groupId -> Set of userIds
+
+const connectedUsers = new Map(); // userId → socket.id
+
+io.on('connection', async (socket) => {
+  let currentUserId = null;
+
+  socket.on('register-user', ({ userId }) => {
+    currentUserId = userId;
+    connectedUsers.set(userId, socket.id);
+    socket.join(`user-${userId}`);
+    console.log(`👤 Registered and joined user room: user-${userId}`);
+  });
+
+  socket.on('ready-for-invites', ({ userId }) => {
+    console.log(`✅ User ${userId} is ready to receive invites`);
+    readyForInvite.add(userId);
+  });
+
+  socket.on('join-session', ({ groupId, userId }) => {
+    if (!activeGroups.has(groupId)) activeGroups.set(groupId, new Set());
+    activeGroups.get(groupId).add(userId);
+    socket.join(`group-${groupId}`);
+    console.log(`🧩 ${userId} joined group ${groupId}`);
+  });
+
+  socket.on('debug-message', ({ userId, message }) => {
+    io.to(`user-${userId}`).emit('debug-reply', { message: `Reply to: ${message}` });
+  });
+
+  socket.on('ready-to-swipe', async ({ groupId, userId }) => {
+    const session = activeSessions.get(groupId);
+    if (!session) return;
+
+    session.ready.add(userId);
+    if (session.ready.size === session.users.size) {
+      console.log(`🚀 Everyone is ready for group ${groupId}, emitting start-swiping`);
+
+      const group = await db.oneOrNone(
+        'SELECT location_latitude, location_longitude FROM Groups WHERE group_id = $1',
+        [groupId]
+      );
+
+      if (!group) {
+        console.warn(`⚠️ Could not fetch location for group ${groupId}`);
+        return;
+      }
+
+      io.to(`group-${groupId}`).emit('start-swiping', {
+        lat: parseFloat(group.location_latitude),
+        lng: parseFloat(group.location_longitude),
+        types: session.types || []
+      });
+    }
+  });
+
+  socket.on('invite-user-by-username', async ({ username, groupId, lat, lng, types }) => {
+    console.log('📨 Received invite-user-by-username event for:', username);
+    console.log(`📤 Sending invite with types:`, types);
+
+    try {
+      const target = await db.oneOrNone('SELECT user_id FROM Users WHERE username = $1', [username]);
+      if (!target) {
+        console.log('❌ No user found with username:', username);
+        return;
+      }
+
+      const room = `user-${target.user_id}`;
+      if (!activeSessions.has(groupId)) {
+        activeSessions.set(groupId, { users: new Set(), ready: new Set(), types });
+      } else {
+        activeSessions.get(groupId).types = types;
+      }
+      
+      
+      for (let i = 0; i < 20; i++) {
+        const sockets = await io.in(room).fetchSockets();
+
+
+        if (sockets.length > 0) {
+          console.log(`✅ User ${target.user_id} found in room ${room}, sending invite`);
+          io.to(room).emit('invite-user-to-session', {
+            groupId,
+            lat,
+            lng,
+            types
+          });
+
+          return;
+        }
+
+        console.log(`⏳ Waiting for ${room} to be ready... Retry ${i + 1}`);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+
+      console.warn(`❌ Failed to emit to ${room} after retries`);
+    } catch (err) {
+      console.error('❌ Error in invite-user-by-username:', err);
+    }
+  });
+
+  socket.on('accept-session-invite', async ({ groupId, userId }) => {
+    if (!activeSessions.has(groupId)) {
+      activeSessions.set(groupId, { users: new Set(), ready: new Set(), types: [] });
+    }
+
+    const session = activeSessions.get(groupId);
+    session.users.add(userId);
+    session.ready.add(userId);
+
+    if (session.ready.size === session.users.size) {
+      console.log(`🚀 Everyone is ready for group ${groupId}, emitting start-swiping`);
+
+      try {
+        const group = await db.oneOrNone(
+          `SELECT location_latitude, location_longitude FROM Groups WHERE group_id = $1`,
+          [groupId]
+        );
+
+        if (!group) {
+          console.warn('⚠️ Could not find group', groupId);
+          return;
+        }
+
+        io.to(`group-${groupId}`).emit('start-swiping', {
+          lat: group.location_latitude,
+          lng: group.location_longitude,
+          types: session.types || []
+        });
+
+        console.log('✅ Emitted start-swiping to group with coords:', group.location_latitude, group.location_longitude);
+      } catch (err) {
+        console.error('❌ Error fetching group lat/lng:', err);
+      }
+    }
+  });
+
+  socket.on('user-swipe', async ({ groupId, userId, restaurant }) => {
+    try {
+      let restaurantId;
+      const existing = await db.oneOrNone(
+        `SELECT restaurant_id FROM Restaurants WHERE api_restaurant_id = $1`,
+        [restaurant.place_id]
+      );
+
+      if (existing) {
+        restaurantId = existing.restaurant_id;
+      } else {
+        const newRest = await db.one(
+          `INSERT INTO Restaurants (api_restaurant_id, name, address, latitude, longitude, api_data)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING restaurant_id`,
+          [
+            restaurant.place_id,
+            restaurant.name,
+            restaurant.address || '',
+            restaurant.lat,
+            restaurant.lng,
+            restaurant
+          ]
+        );
+        restaurantId = newRest.restaurant_id;
+      }
+
+      await db.none(
+        `INSERT INTO Swipes (group_id, user_id, restaurant_id, swipe_direction)
+         VALUES ($1, $2, $3, $4)`,
+        [groupId, userId, restaurantId, restaurant.swipeDirection]
+      );
+
+      socket.to(`group-${groupId}`).emit('peer-swipe', {
+        userId,
+        restaurantId,
+        direction: restaurant.swipeDirection
+      });
+    } catch (err) {
+      console.error('❌ Error handling swipe:', err);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`🔌 Socket ${socket.id} disconnected`);
+  });
+});
+
 
 // *****************************************************
-// <!-- Section 10 : Start Server -->
+// <!-- Section 7 : Start Server -->
 // *****************************************************
-//app.listen(3000, () => console.log('Server is listening on port 3000'));
-module.exports = app.listen(3000, () => console.log('Server is listening on port 3000'));
+http.listen(3000, () => console.log('Server listening on port 3000'));
