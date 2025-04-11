@@ -109,7 +109,7 @@ app.post('/check-username', async (req, res) => {
 
 app.post('/register', async (req, res) => {
   if (req.body.password !== req.body.confirmPassword) {
-    return res.render('Pages/register', { message : 'Passwords do not match' });
+    return res.render('Pages/register', { message: 'Passwords do not match' });
   }
   const hash = await bcrypt.hash(req.body.password, 10);
   try {
@@ -137,7 +137,7 @@ app.post('/login', async (req, res) => {
     await db.none(`
       UPDATE Users SET active = TRUE, last_active_at = CURRENT_TIMESTAMP WHERE user_id = $1
     `, [user.user_id]);
-    
+
     req.session.save(() => res.redirect('/home'));
   } catch (err) {
     console.log(err);
@@ -151,7 +151,7 @@ app.post('/login', async (req, res) => {
 // *****************************************************
 
 app.get('/welcome', (req, res) => {
-  res.json({status: 'success', message: 'Welcome!'});
+  res.json({ status: 'success', message: 'Welcome!' });
 });
 //identical to register route but used for testing for lab 11 
 app.post('/register_test', async (req, res) => {
@@ -159,7 +159,7 @@ app.post('/register_test', async (req, res) => {
   try {
     await db.none(`INSERT INTO Users (username, password_hash) VALUES ($1, $2)`, [req.body.username, hash]);
     res.json({ result: 'Success' });
-   // res.redirect('/login');
+    // res.redirect('/login');
   } catch (err) {
     console.log(err);
     return res.status(400).json({ result: 'Username already exists' });
@@ -249,7 +249,7 @@ app.get('/friends', async (req, res) => {
       WHERE (f.user_id_1 = $1 OR f.user_id_2 = $1)
         AND u.user_id != $1
     `, [userId]);
-    
+
 
     const recentMatches = await db.any(`
       SELECT h.matched_with, h.group_name, h.matched_at, r.name AS restaurant_name
@@ -279,7 +279,7 @@ app.post('/session/invite', async (req, res) => {
 
     // 1. Lookup the friend's user ID by username
     const [[userRow]] = await db.execute(
-      'SELECT id FROM users WHERE username = ?', 
+      'SELECT id FROM users WHERE username = ?',
       [friendUsername]
     );
     if (!userRow) {
@@ -289,7 +289,7 @@ app.post('/session/invite', async (req, res) => {
 
     // 2. (Optional) Verify friendship exists
     const [[friendshipRow]] = await db.execute(
-      'SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ?', 
+      'SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ?',
       [currentUserId, friendId]
     );
     if (!friendshipRow) {
@@ -588,7 +588,7 @@ const router = express.Router();
 
 // Save food preferences
 router.post('/preferences', async (req, res) => {
-  const userId = req.session.user?.user_id; 
+  const userId = req.session.user?.user_id;
 
   if (!userId) {
     return res.status(401).json({ error: 'Not logged in' });
@@ -624,14 +624,15 @@ app.get('/logout', async (req, res) => {
       await db.none(`
         UPDATE Users SET active = FALSE, last_active_at = CURRENT_TIMESTAMP WHERE user_id = $1
       `, [userId]);
-      
+
     }
 
     req.session.destroy(() => res.redirect('/login'));
   } catch (err) {
     console.error('Error logging out:', err);
     res.redirect('/login');
-  }});
+  }
+});
 
 // Create new group
 app.post('/groups', async (req, res) => {
@@ -646,7 +647,7 @@ app.post('/groups', async (req, res) => {
       active: true,
       members: [req.session.user.user_id]
     };
-    
+
     // Add friends to the group if provided
     if (req.body.friends && Array.isArray(req.body.friends)) {
       for (const friendId of req.body.friends) {
@@ -747,8 +748,8 @@ io.on('connection', async (socket) => {
       } else {
         activeSessions.get(groupId).types = types;
       }
-      
-      
+
+
       for (let i = 0; i < 20; i++) {
         const sockets = await io.in(room).fetchSockets();
 

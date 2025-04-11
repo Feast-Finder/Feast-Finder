@@ -50,95 +50,102 @@
           </ul>
 
           <div class="tab-content p-3" id="profileTabsContent">
-<!-- Food Preferences Tab -->
-<div class="tab-pane fade show active" id="preferences" role="tabpanel" aria-labelledby="preferences-tab">
-  <form id="preferencesForm">
-    <h5 class="mb-3">Your Food Preferences</h5>
+            <!-- Food Preferences Tab -->
+            <div class="tab-pane fade show active" id="preferences" role="tabpanel" aria-labelledby="preferences-tab">
+              <form id="preferencesForm">
+                <h5 class="mb-3">Your Food Preferences</h5>
 
-    <div class="mb-3">
-      <label class="form-label">Cuisine Types</label>
-      <div class="row">
-        {{! All inputs have disabled attribute initially }}
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="italian" name="cuisine" value="italian" checked disabled>
-            <label class="form-check-label" for="italian">Italian</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="mexican" name="cuisine" value="mexican" checked disabled>
-            <label class="form-check-label" for="mexican">Mexican</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="chinese" name="cuisine" value="chinese" checked disabled>
-            <label class="form-check-label" for="chinese">Chinese</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="indian" name="cuisine" value="indian" disabled>
-            <label class="form-check-label" for="indian">Indian</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="fastfood" name="cuisine" value="fastfood" disabled>
-            <label class="form-check-label" for="fastfood">Fast Food</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="thai" name="cuisine" value="thai" disabled>
-            <label class="form-check-label" for="thai">Thai</label>
-          </div>
-        </div>
-      </div>
-    </div>
+                <div class="mb-3">
+                  <label class="form-label">Cuisine Types</label>
+                  <div class="row">
+                    {{! All inputs have disabled attribute initially }}
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="italian" name="cuisine" value="italian"
+                          checked disabled>
+                        <label class="form-check-label" for="italian">Italian</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="mexican" name="cuisine" value="mexican"
+                          checked disabled>
+                        <label class="form-check-label" for="mexican">Mexican</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="chinese" name="cuisine" value="chinese"
+                          checked disabled>
+                        <label class="form-check-label" for="chinese">Chinese</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="indian" name="cuisine" value="indian"
+                          disabled>
+                        <label class="form-check-label" for="indian">Indian</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="fastfood" name="cuisine" value="fastfood"
+                          disabled>
+                        <label class="form-check-label" for="fastfood">Fast Food</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="thai" name="cuisine" value="thai" disabled>
+                        <label class="form-check-label" for="thai">Thai</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-    <div class="mb-3">
-      <label class="form-label">Dietary Restrictions</label>
-      <div class="row">
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="vegetarian" name="diet" value="vegetarian" disabled>
-            <label class="form-check-label" for="vegetarian">Vegetarian</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="vegan" name="diet" value="vegan" disabled>
-            <label class="form-check-label" for="vegan">Vegan</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="glutenFree" name="diet" value="glutenFree" disabled>
-            <label class="form-check-label" for="glutenFree">Gluten-Free</label>
-          </div>
-        </div>
-      </div>
-    </div>
+                <div class="mb-3">
+                  <label class="form-label">Dietary Restrictions</label>
+                  <div class="row">
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="vegetarian" name="diet" value="vegetarian"
+                          disabled>
+                        <label class="form-check-label" for="vegetarian">Vegetarian</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="vegan" name="diet" value="vegan" disabled>
+                        <label class="form-check-label" for="vegan">Vegan</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="glutenFree" name="diet" value="glutenFree"
+                          disabled>
+                        <label class="form-check-label" for="glutenFree">Gluten-Free</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-    <div class="mb-3">
-      <label for="priceRange" class="form-label">Price Range</label>
-      <select class="form-select" id="priceRange" name="priceRange" disabled>
-        <option value="any">Any</option>
-        <option value="$">$ (Inexpensive)</option>
-        <option value="$$" selected>$$ (Moderate)</option>
-        <option value="$$$">$$$ (Expensive)</option>
-        <option value="$$$$">$$$$ (Very Expensive)</option>
-      </select>
-    </div>
+                <div class="mb-3">
+                  <label for="priceRange" class="form-label">Price Range</label>
+                  <select class="form-select" id="priceRange" name="priceRange" disabled>
+                    <option value="any">Any</option>
+                    <option value="$">$ (Inexpensive)</option>
+                    <option value="$$" selected>$$ (Moderate)</option>
+                    <option value="$$$">$$$ (Expensive)</option>
+                    <option value="$$$$">$$$$ (Very Expensive)</option>
+                  </select>
+                </div>
 
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-      <button type="button" id="editPreferencesBtn" class="btn btn-outline-secondary">Edit</button>
-      <button type="submit" id="savePreferencesBtn" class="btn btn-primary d-none">Save</button>
-    </div>
-  </form>
-</div>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                  <button type="button" id="editPreferencesBtn" class="btn btn-outline-secondary">Edit</button>
+                  <button type="submit" id="savePreferencesBtn" class="btn btn-primary d-none">Save</button>
+                </div>
+              </form>
+            </div>
 
             <!-- Account Settings Tab -->
             <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
@@ -217,22 +224,22 @@
     </div>
   </div>
   <!-- Invitation Modal -->
-<div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="inviteModalLabel">Swipe Session Invite</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        A friend invited you to join a swiping session.
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary" id="joinSwipeBtn">Join Swiping</button>
+  <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="inviteModalLabel">Swipe Session Invite</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          A friend invited you to join a swiping session.
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" id="joinSwipeBtn">Join Swiping</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -317,66 +324,66 @@
       }
     });
 
-document.getElementById('editPreferencesBtn').addEventListener('click', function () {
-  const form = document.getElementById('preferencesForm');
-  const inputs = form.querySelectorAll('input, select');
-  const saveBtn = document.getElementById('savePreferencesBtn');
+    document.getElementById('editPreferencesBtn').addEventListener('click', function () {
+      const form = document.getElementById('preferencesForm');
+      const inputs = form.querySelectorAll('input, select');
+      const saveBtn = document.getElementById('savePreferencesBtn');
 
-  inputs.forEach(input => input.removeAttribute('disabled'));
-  this.classList.add('d-none');
-  saveBtn.classList.remove('d-none');
-});
-
-document.getElementById('preferencesForm').addEventListener('submit', async function (e) {
-  e.preventDefault();
-
-  const form = e.target;
-
-  const selectedCuisines = Array.from(form.querySelectorAll('input[name="cuisine"]:checked')).map(input => input.value);
-  const selectedDiet = Array.from(form.querySelectorAll('input[name="diet"]:checked')).map(input => input.value);
-  const priceRange = form.priceRange.value;
-
-  try {
-    const res = await fetch('/profile/preferences', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        cuisines: selectedCuisines,
-        dietary: selectedDiet,
-        priceRange
-      })
+      inputs.forEach(input => input.removeAttribute('disabled'));
+      this.classList.add('d-none');
+      saveBtn.classList.remove('d-none');
     });
 
-    const result = await res.json();
+    document.getElementById('preferencesForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
 
-    if (res.ok) {
-      alert('Preferences updated!');
-      const inputs = form.querySelectorAll('input, select');
-      inputs.forEach(input => input.setAttribute('disabled', true));
-      document.getElementById('savePreferencesBtn').classList.add('d-none');
-      document.getElementById('editPreferencesBtn').classList.remove('d-none');
-    } else {
-      alert(result.error || 'Update failed.');
-    }
-  } catch (err) {
-    console.error(err);
-    alert(' Server error.');
-  }
-});
+      const form = e.target;
 
-  const socket = io();
-  const userId = {{user.user_id}}; 
-socket.emit('register-user', { userId });
-socket.on('invite-user-to-session', ({ groupId }) => {
-  console.log('📩 Received invite for group:', groupId);
-  const inviteModal = new bootstrap.Modal(document.getElementById('inviteModal'));
-  inviteModal.show();
+      const selectedCuisines = Array.from(form.querySelectorAll('input[name="cuisine"]:checked')).map(input => input.value);
+      const selectedDiet = Array.from(form.querySelectorAll('input[name="diet"]:checked')).map(input => input.value);
+      const priceRange = form.priceRange.value;
 
-  // Add click handler for the Join button
-  document.getElementById('joinSwipeBtn')?.addEventListener('click', () => {
-    socket.emit('accept-session-invite', { groupId, userId });
-  });
-});
+      try {
+        const res = await fetch('/profile/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cuisines: selectedCuisines,
+            dietary: selectedDiet,
+            priceRange
+          })
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          alert('Preferences updated!');
+          const inputs = form.querySelectorAll('input, select');
+          inputs.forEach(input => input.setAttribute('disabled', true));
+          document.getElementById('savePreferencesBtn').classList.add('d-none');
+          document.getElementById('editPreferencesBtn').classList.remove('d-none');
+        } else {
+          alert(result.error || 'Update failed.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert(' Server error.');
+      }
+    });
+
+    const socket = io();
+    const userId = {{ user.user_id }};
+    socket.emit('register-user', { userId });
+    socket.on('invite-user-to-session', ({ groupId }) => {
+      console.log('📩 Received invite for group:', groupId);
+      const inviteModal = new bootstrap.Modal(document.getElementById('inviteModal'));
+      inviteModal.show();
+
+      // Add click handler for the Join button
+      document.getElementById('joinSwipeBtn')?.addEventListener('click', () => {
+        socket.emit('accept-session-invite', { groupId, userId });
+      });
+    });
 
   </script>
 </div>
