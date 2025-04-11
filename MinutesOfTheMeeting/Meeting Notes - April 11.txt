@@ -1,0 +1,21 @@
+Meeting Notes (4/11):
+
+Sam presented on getting the server set up and documenting that process. He explained how the server reboots automatically when a push to the main branch occurs. Abijith explained how to integrate CI/CD with the server.
+
+Cody presented on the implementation of Socket, the friends page, and just general updates across the board.
+
+Christopher presented on getting the minigames going and debugging.
+
+Mason presented on getting the minigames going and working with Socket implementation.
+
+Jack presented on the implementation of the Socket and Geocoding and debugging. Fixing the filtering for the swiping.
+
+Tate presented on helping get the server up and running, debugging the database, and merging branches with main.
+
+
+Goals for next week: 
+
+- Get swiping functionality fully done and implemented
+- Get minigames completed
+- Implement CI/CD with the server
+- Get everything generally polished and in a mostly final state
