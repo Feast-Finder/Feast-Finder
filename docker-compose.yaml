@@ -13,7 +13,7 @@ services:
     ports:
       - "6379:6379"
 
-  web:
+  web1:
     image: node:lts
     user: 'node'
     working_dir: /repository
@@ -24,9 +24,26 @@ services:
       - db
       - redis
     ports:
-      - '3000:3000'
+      - '3001:3000'
     volumes:
       - ./:/repository
     command: 'npm start'
+
+  web2:
+    image: node:lts
+    user: 'node'
+    working_dir: /repository
+    env_file: .env
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - db
+      - redis
+    ports:
+      - '3002:3000'
+    volumes:
+      - ./:/repository
+    command: 'npm start'
+
 volumes:
   feast-finder:
