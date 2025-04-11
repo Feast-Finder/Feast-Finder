@@ -1,6 +1,6 @@
 -- Create the ENUM type for swipe direction
 CREATE TYPE swipe_direction_enum AS ENUM ('left', 'right');
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE,
