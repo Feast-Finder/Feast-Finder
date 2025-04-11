@@ -569,8 +569,8 @@ startSessionBtn.addEventListener('click', async function () {
       });
     });
 
-const geocodedLat = 40.014984;
-const geocodedLng =  -105.270546;
+    const geocodedLat = geoResults[0].geometry.location.lat();
+    const geocodedLng = geoResults[0].geometry.location.lng();
 
     console.log('Geocoded:', geocodedLat, geocodedLng);
 
@@ -594,7 +594,7 @@ const geocodedLng =  -105.270546;
     if (data.success) {
       currentGroupId = data.group_id;
       console.log('Group created with ID:', currentGroupId);
-
+      searchNearbyRestaurants({ lat: geocodedLat, lng: geocodedLng });
 
       contentOverlay.style.opacity = '0';
       setTimeout(() => {
