@@ -621,28 +621,36 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
 
         function searchNearbyRestaurants(location, SelectedTypes =[]) {
             console.log('Searching for restaurants near:', location);
-  const request = {
-    location: location,
-    radius: 5000,
-    type: 'restaurant'
-  };
-  if (SelectedTypes.length > 0) {
-    request.keyword = SelectedTypes.join(' ');
-  }
-            // Add restaurant type filters if selected
-   const selectedTypes = (SelectedTypes.length > 0) ? SelectedTypes : [];
-
-  if (selectedTypes.length > 0) {
-    request.keyword = selectedTypes.join(' ');
-  }
-
-            console.log('Places API request:', request);
+const request = {
+                location: location,
+                radius: 5000,
+                type: 'restaurant'
+            };
             
+            // Define valid restaurant types
+            const validTypes = [
+                'restaurant',
+                'cafe',
+                'bar',
+                'bakery',
+                'meal_delivery',
+                'meal_takeaway',
+                'food'
+            ];
+            
+            // Get selected types from checkboxes
+            const selectedTypes = Array.from(document.querySelectorAll('.form-check-input:checked'))
+                .map(cb => cb.value)
+                .filter(v => v !== 'on');
+            
+            console.log('Selected types:', selectedTypes);
+            
+            // Only add keyword filter if specific types are selected
+            if (selectedTypes.length > 0) {
+                request.keyword = selectedTypes.join(' ');
+            }
             service.nearbySearch(request, (results, status) => {
-                console.log('Places API response status:', status);
-                console.log('Places API response results:', results);
-                
-                if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
                     console.log('Found restaurants:', results.length);
                     
                     // Define the valid restaurant types we want to show
@@ -650,44 +658,33 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
                     
                     // Filter to only include places matching our desired types
                     currentRestaurants = results.filter(place => {
-                        return place.business_status === 'OPERATIONAL' && 
-                               place.types && 
-                               place.types.some(type => validTypes.includes(type));
+                        // First check if the place is operational
+                        if (place.business_status !== 'OPERATIONAL') {
+                            return false;
+                        }
+                        
+                        // If no types are selected, only show actual restaurants
+                        if (selectedTypes.length === 0) {
+                            return place.types && 
+                                   place.types.some(type => validTypes.includes(type));
+                        }
+                        
+                        // If types are selected, ensure the place matches at least one selected type
+                        return place.types && 
+                               place.types.some(type => selectedTypes.includes(type));
                     });
                     
                     console.log('Filtered restaurants:', currentRestaurants.length);
-                    
-                    // Apply selected type filters if any are checked
-                    if (selectedTypes.length > 0) {
-                        const filterMap = {
-                            'cafe': ['cafe'],
-                            'bar': ['bar', 'night_club'],
-                            'fine_dining': ['restaurant'],  // We'll need to rely on other attributes for fine dining
-                            'fast_food': ['meal_takeaway', 'fast_food'],
-                            'bakery': ['bakery']
-                        };
-                        
-                        // Further filter by selected types
-                        currentRestaurants = currentRestaurants.filter(place => {
-                            return selectedTypes.some(selectedType => {
-                                const typesToMatch = filterMap[selectedType] || [];
-                                return place.types.some(placeType => typesToMatch.includes(placeType));
-                            });
-                        });
-                        
-                        console.log('After type filtering:', currentRestaurants.length);
+                    if (currentRestaurants.length > 0) {
+                        currentIndex = 0;
+                        showNextRestaurant();
+                    } else {
+                        alert('No restaurants found matching your criteria. Try adjusting your filters or location.');
                     }
-                    
-                    if (currentRestaurants.length === 0) {
-                        alert('No restaurants found in this area. Try expanding your search or changing filters.');
-                        return;
-                    }
-                    
-                    currentIndex = 0;
-                    showNextRestaurant();
                 } else {
-                    console.error('Places API error or no results');
-                    alert('No restaurants found in this area. Please try a different location.');
+                    console.error('Places API error:', status);
+                    alert('Error searching for restaurants. Please try again.');
+                   
                 }
             });
         }
