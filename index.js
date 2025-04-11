@@ -236,7 +236,34 @@ app.get('/home', async (req, res) => {
 });
 
 
-app.get('/profile', (req, res) => res.render('Pages/Profile'));
+app.get('/profile', async (req, res) => {
+  const userId = req.session.user?.user_id;
+  if (!userId) return res.redirect('/login');
+
+  try {
+    const user = await db.oneOrNone(`
+      SELECT u.*, p.cuisines, p.dietary, p.price_range
+      FROM users u
+      LEFT JOIN user_preferences p ON u.user_id = p.user_id
+      WHERE u.user_id = $1
+    `, [userId]);
+
+    const history = await db.any(`
+      SELECT h.matched_with, h.group_name, r.name AS restaurant_name, h.matched_at
+      FROM UserMatchHistory h
+      JOIN Restaurants r ON h.restaurant_id = r.restaurant_id
+      WHERE h.user_id = $1
+      ORDER BY h.matched_at DESC
+      LIMIT 5
+    `, [userId]);
+
+    res.render('Pages/Profile', { user, history });
+
+  } catch (err) {
+    console.error('Error loading profile:', err);
+    res.status(500).send('Error loading profile');
+  }
+});
 
 app.get('/friends', async (req, res) => {
   try {
@@ -537,51 +564,77 @@ app.post('/profile/upload', (req, res) => {
 });
 
 app.post('/profile/update', async (req, res) => {
+  const { email, phone, currentPassword, newPassword, confirmNewPassword } = req.body;
   const userId = req.session.user?.user_id;
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { email, currentPassword, newPassword, confirmNewPassword } = req.body;
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   try {
-    const user = await db.oneOrNone(`SELECT * FROM Users WHERE user_id = $1`, [userId]);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    // 1. Update email (if changed)
-    if (email && email !== user.email) {
-      await db.none(`UPDATE Users SET email = $1 WHERE user_id = $2`, [email, userId]);
-      req.session.user.email = email;
+    // Validate phone format if provided
+    if (phone && !/^\+?\d{10,15}$/.test(phone)) {
+      return res.status(400).json({ error: 'Invalid phone number format' });
     }
 
-    // 2. Handle password update
+    // Start update payload
+    const updates = [];
+    const values = [];
+    let idx = 1;
+
+    if (email) {
+      updates.push(`email = $${idx++}`);
+      values.push(email);
+    }
+
+    if (phone) {
+      updates.push(`phone = $${idx++}`);
+      values.push(phone);
+    }
+
+    // If user is trying to change password
     if (newPassword || confirmNewPassword || currentPassword) {
       if (!currentPassword || !newPassword || !confirmNewPassword) {
-        return res.status(400).json({ error: 'All password fields are required' });
+        return res.status(400).json({ error: 'All password fields are required to change your password' });
       }
 
-      const match = await bcrypt.compare(currentPassword, user.password_hash);
-      if (!match) {
-        return res.status(403).json({ error: 'Current password is incorrect' });
+      if (newPassword === currentPassword) {
+        return res.status(400).json({ error: 'New password must be different from current password' });
       }
 
       if (newPassword !== confirmNewPassword) {
         return res.status(400).json({ error: 'New passwords do not match' });
       }
 
-      const isSamePassword = await bcrypt.compare(newPassword, user.password_hash);
-      if (isSamePassword) {
-        return res.status(400).json({ error: 'New password cannot be the same as the current password' });
+      // Fetch current hashed password
+      const existing = await db.one('SELECT hashed_password FROM users WHERE user_id = $1', [userId]);
+      const match = await bcrypt.compare(currentPassword, existing.hashed_password);
+
+      if (!match) {
+        return res.status(400).json({ error: 'Current password is incorrect' });
       }
 
-      const hashed = await bcrypt.hash(newPassword, 10);
-      await db.none(`UPDATE Users SET password_hash = $1 WHERE user_id = $2`, [hashed, userId]);
+      const hashed = await bcrypt.hash(newPassword, 12);
+      updates.push(`hashed_password = $${idx++}`);
+      values.push(hashed);
     }
 
-    return res.json({ success: true });
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields provided to update' });
+    }
+
+    values.push(userId);
+    const updateQuery = `UPDATE users SET ${updates.join(', ')} WHERE user_id = $${idx}`;
+    await db.none(updateQuery, values);
+
+    res.json({ success: true });
   } catch (err) {
-    console.error('Error updating profile:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Update error:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
+
+
 
 const router = express.Router();
 
