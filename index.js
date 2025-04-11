@@ -13,7 +13,7 @@ const { Server } = require('socket.io');
 const io = new Server(http);
 const { createAdapter } = require('@socket.io/redis-adapter');
 const { createClient } = require('ioredis');
-
+const moment = require('moment');
 const pubClient = createClient({ host: 'redis', port: 6379 });
 const subClient = pubClient.duplicate();
 
@@ -37,6 +37,9 @@ const activeSessions = new Map(); // { groupId: { users: Set, ready: Set } }
 
 Handlebars.registerHelper('charAt', function (str, index) {
   return str && str.charAt(index);
+});
+Handlebars.registerHelper('formatDate', function (datetime, format) {
+  return datetime ? moment(datetime).format(format) : '';
 });
 
 // *****************************************************
@@ -108,17 +111,40 @@ app.post('/check-username', async (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
-  if (req.body.password !== req.body.confirmPassword) {
+  const { username, password, confirmPassword, email, phone } = req.body;
+
+  if (password !== confirmPassword) {
     return res.render('Pages/register', { message: 'Passwords do not match' });
   }
-  const hash = await bcrypt.hash(req.body.password, 10);
+
   try {
-    await db.none(`INSERT INTO Users (username, password_hash) VALUES ($1, $2)`, [req.body.username, hash]);
-    req.session.user = req.body.username;
-    req.session.save(() => res.redirect('/login'));
+    const hash = await bcrypt.hash(password, 10);
+
+    // Insert new user
+    const newUser = await db.one(`
+      INSERT INTO Users (username, password_hash, email, phone)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [username, hash, email || null, phone || null]);
+
+    // Insert into user_preferences with default blank values
+    await db.none(`
+      INSERT INTO user_preferences (user_id, cuisines, dietary, price_range)
+      VALUES ($1, ARRAY[]::TEXT[], ARRAY[]::TEXT[], 'any')
+    `, [newUser.user_id]);
+
+    // Set session and mark active
+    req.session.user = newUser;
+
+    await db.none(`
+      UPDATE Users SET active = TRUE, last_active_at = CURRENT_TIMESTAMP
+      WHERE user_id = $1
+    `, [newUser.user_id]);
+
+    req.session.save(() => res.redirect('/home'));
   } catch (err) {
-    console.log(err);
-    res.redirect('/register');
+    console.error(err);
+    res.render('Pages/register', { message: 'Registration failed. Username/email might already be taken.' });
   }
 });
 
@@ -237,33 +263,64 @@ app.get('/home', async (req, res) => {
 
 
 app.get('/profile', async (req, res) => {
-  const userId = req.session.user?.user_id;
-  if (!userId) return res.redirect('/login');
-
   try {
-    const user = await db.oneOrNone(`
-      SELECT u.*, p.cuisines, p.dietary, p.price_range
-      FROM users u
-      LEFT JOIN user_preferences p ON u.user_id = p.user_id
-      WHERE u.user_id = $1
-    `, [userId]);
+    const currentUser = req.session.user;
+    if (!currentUser) return res.redirect('/login');
 
-    const history = await db.any(`
-      SELECT h.matched_with, h.group_name, r.name AS restaurant_name, h.matched_at
+    const userId = currentUser.user_id;
+
+    const user = await db.oneOrNone(`SELECT * FROM users WHERE user_id = $1`, [userId]);
+    const preferences = await db.oneOrNone(`SELECT * FROM user_preferences WHERE user_id = $1`, [userId]);
+
+    const userHistory = await db.any(`
+      SELECT h.*, r.name AS restaurant_name
       FROM UserMatchHistory h
       JOIN Restaurants r ON h.restaurant_id = r.restaurant_id
       WHERE h.user_id = $1
       ORDER BY h.matched_at DESC
-      LIMIT 5
+      LIMIT 10
     `, [userId]);
 
-    res.render('Pages/Profile', { user, history });
+
+    const matchStats = await db.one(`
+      SELECT COUNT(*) AS total
+      FROM UserMatchHistory
+      WHERE user_id = $1 AND matched_with != 'Solo'
+    `, [userId]);
+
+    const topFriends = await db.any(`
+      SELECT matched_with, COUNT(*) as count
+      FROM UserMatchHistory
+      WHERE user_id = $1 AND matched_with != 'Solo'
+      GROUP BY matched_with
+      ORDER BY count DESC
+      LIMIT 3
+    `, [userId]);
+    const timelineData = await db.any(`
+      SELECT h.*, r.name
+      FROM UserMatchHistory h
+      JOIN Restaurants r ON h.restaurant_id = r.restaurant_id
+      WHERE h.user_id = $1
+      ORDER BY h.matched_at DESC
+      LIMIT 10
+    `, [userId]);
+
+
+
+    res.render('Pages/Profile', {
+      user: currentUser,
+      history: userHistory,
+      matchStats,
+      topFriends,
+      timelineData // 👈 add this
+    });
 
   } catch (err) {
     console.error('Error loading profile:', err);
-    res.status(500).send('Error loading profile');
+    res.status(500).send('Server error');
   }
 });
+
 
 app.get('/friends', async (req, res) => {
   try {
@@ -457,6 +514,24 @@ app.get('/users/:userid', async (req, res) => {
 
 
 
+app.delete('/profile/delete', async (req, res) => {
+  try {
+    if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const userId = req.session.user.user_id;
+
+    // Delete user from the database
+    await db.none('DELETE FROM Users WHERE user_id = $1', [userId]);
+
+    // Optionally: delete any related data (FK ON DELETE CASCADE can help)
+    req.session.destroy(); // Clear the session
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Delete account error:", err);
+    res.status(500).json({ error: 'Something went wrong while deleting your account.' });
+  }
+});
 
 
 app.post('/groups', async (req, res) => {
@@ -489,79 +564,88 @@ app.post('/groups', async (req, res) => {
   }
 });
 
-const Busboy = require('busboy');
-const fs = require('fs');
 
+
+
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+const busboy = require('busboy');
 
 app.post('/profile/upload', (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+  const userId = req.session.user?.user_id;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-  const busboy = Busboy({ headers: req.headers });
-  const userId = req.session.user.user_id;
+  const bb = busboy({ headers: req.headers });
 
   let filePath = '';
-  let savePath = '';
-  let responseSent = false;
+  let fileName = '';
+  let oldPictureUrl = '';
 
-  busboy.on('file', (fieldname, file, { filename, encoding, mimeType }) => {
-    console.log('File received:');
-    console.log('filename:', filename);
-    console.log('mimeType:', mimeType);
+  // 1. Get existing profile picture
+  db.oneOrNone('SELECT profile_picture_url FROM users WHERE user_id = $1', [userId])
+    .then(user => {
+      oldPictureUrl = user?.profile_picture_url || '';
 
-    if (!filename) {
-      file.resume();
-      if (!responseSent) {
-        res.status(400).json({ error: 'No filename' });
-        responseSent = true;
-      }
-      return;
-    }
+      bb.on('file', (name, file, info) => {
+        const { filename, mimeType } = info;
+        const ext = path.extname(filename);
+        fileName = `${uuidv4()}${ext}`;
+        filePath = path.join(__dirname, 'public', 'uploads', fileName);
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(mimeType)) {
-      file.resume();
-      if (!responseSent) {
-        res.status(400).json({ error: 'Invalid file type' });
-        responseSent = true;
-      }
-      return;
-    }
+        const writeStream = fs.createWriteStream(filePath);
+        file.pipe(writeStream);
+      });
 
-    const ext = path.extname(filename).toLowerCase();
-    const newFilename = `user_${userId}${ext}`;
-    filePath = `/uploads/${newFilename}`;
-    savePath = path.join(__dirname, 'public', filePath);
+      bb.on('finish', async () => {
+        try {
+          const dbPath = `/uploads/${fileName}`;
+          await db.none('UPDATE users SET profile_picture_url = $1 WHERE user_id = $2', [dbPath, userId]);
 
-    // Ensure the uploads directory exists
-    const uploadsDir = path.join(__dirname, 'public', 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+          // 2. Delete old picture from filesystem
+          if (oldPictureUrl && oldPictureUrl.startsWith('/uploads/')) {
+            const oldPath = path.join(__dirname, 'public', oldPictureUrl);
+            fs.unlink(oldPath, err => {
+              if (err && err.code !== 'ENOENT') console.error('Error deleting old image:', err);
+            });
+          }
 
-    console.log('📦 Saving to:', savePath);
-    const writeStream = fs.createWriteStream(savePath);
-    file.pipe(writeStream);
-  });
+          res.json({ profile_picture_url: dbPath });
+        } catch (err) {
+          console.error('Upload error:', err);
+          res.status(500).json({ error: 'Failed to upload image' });
+        }
+      });
 
-  busboy.on('finish', async () => {
-    if (responseSent) return;
-
-    if (!filePath) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-
-    try {
-      await db.none(`UPDATE Users SET profile_picture_url = $1 WHERE user_id = $2`, [filePath, userId]);
-      req.session.user.profile_picture_url = filePath;
-      res.json({ profile_picture_url: filePath });
-    } catch (err) {
+      req.pipe(bb);
+    })
+    .catch(err => {
       console.error('DB error:', err);
-      res.status(500).json({ error: 'Failed to save profile picture' });
-    }
-  });
-
-  req.pipe(busboy);
+      res.status(500).json({ error: 'Failed to check old image' });
+    });
 });
+
+app.get('/profile/match-stats', async (req, res) => {
+  const userId = req.session.user?.user_id;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const stats = await db.one(`
+      SELECT 
+        COUNT(*) AS total_matches,
+        COUNT(*) FILTER (WHERE group_name IS NULL) AS solo_matches,
+        COUNT(*) FILTER (WHERE group_name IS NOT NULL) AS group_matches,
+        MAX(matched_at) AS last_matched
+      FROM UserMatchHistory
+      WHERE user_id = $1
+    `, [userId]);
+
+    res.json(stats);
+  } catch (err) {
+    console.error('Error fetching match stats:', err);
+    res.status(500).json({ error: 'Failed to fetch match stats' });
+  }
+});
+
 
 app.post('/profile/update', async (req, res) => {
   const { email, phone, currentPassword, newPassword, confirmNewPassword } = req.body;
