@@ -935,8 +935,30 @@ socket.on('peer-swipe', ({ userId, restaurantId, direction }) => {
   console.log({ userId, restaurantId, direction });
 });
 
-socket.on('group-match', ({ restaurantId }) => {
-  console.log('MAAAATCH');
+socket.on('group-match', ({ restaurant }) => {
+  console.log(restaurant);
+
+  // Show match modal
+  document.getElementById('match-restaurant-name').textContent = restaurant.name;
+  const matchImage = document.getElementById('match-restaurant-image');
+
+  // Try to get the restaurant photo
+  if (restaurant.photos && restaurant.photos[0]) {
+    try {
+      matchImage.src = restaurant.photos[0].getUrl({
+        maxWidth: 800,
+        maxHeight: 600
+      });
+    } catch (_) {
+      matchImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
+    }
+  } else {
+    matchImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
+  }
+
+  document.getElementById('match-restaurant-link').href = 
+    `https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`;
+  matchModal.show();
 });
 
 function sockHandleVote(liked) {

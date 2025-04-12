@@ -802,7 +802,7 @@ io.on('connection', async (socket) => {
         console.log('✅ It\'s a match');
         console.log(`✅ Emitting group match to ${groupId}`);
         io.to(`group-${groupId}`).emit('group-match', {
-          restaurantId
+          restaurant
         });
 
         // Delete group swipes for the current session
