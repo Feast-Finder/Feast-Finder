@@ -658,6 +658,7 @@ io.on('connection', async (socket) => {
       }
 
       io.to(`group-${groupId}`).emit('start-swiping', {
+        groupId: groupId,
         lat: parseFloat(group.location_latitude),
         lng: parseFloat(group.location_longitude),
         types: session.types || []
@@ -734,6 +735,7 @@ io.on('connection', async (socket) => {
         }
 
         io.to(`group-${groupId}`).emit('start-swiping', {
+          groupId: groupId,
           lat: group.location_latitude,
           lng: group.location_longitude,
           types: session.types || []
@@ -779,7 +781,8 @@ io.on('connection', async (socket) => {
         [groupId, userId, restaurantId, restaurant.swipeDirection]
       );
 
-      socket.to(`group-${groupId}`).emit('peer-swipe', {
+      console.log(`✅ Emitting peer swipe to ${groupId}`);
+      io.to(`group-${groupId}`).emit('peer-swipe', {
         userId,
         restaurantId,
         direction: restaurant.swipeDirection

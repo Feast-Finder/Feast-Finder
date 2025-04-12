@@ -884,7 +884,7 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
             restaurantCard.classList.add('swipe-right');
             setTimeout(() => {
                 restaurantCard.classList.remove('swipe-right');
-                handleVote(true);
+                sockHandleVote(true);
             }, 500);
         });
 
@@ -892,7 +892,7 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
             restaurantCard.classList.add('swipe-left');
             setTimeout(() => {
                 restaurantCard.classList.remove('swipe-left');
-                handleVote(false);
+                sockHandleVote(false);
             }, 500);
         });
 
@@ -907,7 +907,9 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
             }
         });
     
-socket.on('start-swiping', ({ lat, lng, types }) => {
+socket.on('start-swiping', ({ groupId, lat, lng, types }) => {
+  currentGroupId = groupId;
+
   console.log('🚀 All users ready — swiping begins!');
   console.log('🎯 Received filter types on receiver:', types);
   document.getElementById('waitingOverlay')?.classList.add('d-none');
@@ -928,6 +930,34 @@ socket.on('start-swiping', ({ lat, lng, types }) => {
   likeBtn.removeAttribute('disabled');
   dislikeBtn.removeAttribute('disabled');
 });
+
+socket.on('peer-swipe', ({ userId, restaurantId, direction }) => {
+  console.log(`
+  userId: ${userId},
+  restaurantId: ${restaurantId},
+  direction: ${direction}`);
+});
+
+function sockHandleVote(liked) {
+  if (!currentRestaurants || !currentRestaurants[currentIndex]) {
+    console.error('No current restaurant to vote on');
+    alert('Error: No restaurant to vote on');
+    return;
+  }
+
+  const restaurant = currentRestaurants[currentIndex];
+
+  restaurant.swipeDirection = liked ? 'right' : 'left';
+  restaurant.lat = restaurant.geometry?.location?.lat() || 0;
+  restaurant.lng = restaurant.geometry?.location?.lng() || 0;
+
+  socket.emit('user-swipe', {
+    groupId    : currentGroupId,
+    userId     : {{user.user_id}},
+    restaurant : restaurant
+  });
+}
+
 }
 
     // If the API has already loaded, initialize the map
