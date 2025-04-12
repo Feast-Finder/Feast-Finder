@@ -80,9 +80,12 @@ app.use(session({
 // <!-- Section 4 : Middleware -->
 // *****************************************************
 app.use((req, res, next) => {
-  res.locals.user = req.session.user;
+  if (req.session.user) {
+    res.locals.user = req.session.user;
+  }
   next();
 });
+
 
 
 // *****************************************************
@@ -251,7 +254,8 @@ app.get('/friends', async (req, res) => {
 });
 app.post('/session/invite', async (req, res) => {
   try {
-    const currentUserId = req.session.userId;              // ID of the current user (inviter)
+    const currentUserId = req.session.user?.user_id;
+    // ID of the current user (inviter)
     const friendUsername = req.body.friendUsername;        // username entered in the form
 
     // 1. Lookup the friend's user ID by username
@@ -604,6 +608,24 @@ app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
+app.get('/debug-sockets', async (req, res) => {
+  const sockets = await pubClient.hgetall(connectedUsersKey);
+  res.json(sockets);
+});
+
+app.get('/session/status', async (req, res) => {
+  const { groupId } = req.query;
+  if (!groupId) return res.status(400).json({ error: 'Missing groupId' });
+
+  try {
+    const accepted = await pubClient.hgetall(`${groupId}:accepted`);
+    res.json({ accepted: Object.keys(accepted).length > 0 });
+  } catch (err) {
+    console.error('Error checking session status:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
 // *****************************************************
 // <!-- Section 6 : Socket.IO Real-Time Sync Logic -->
 // *****************************************************
@@ -611,17 +633,36 @@ app.get('/logout', (req, res) => {
 const readyForInvite = new Set(); // userId → is ready
 const activeGroups = new Map();  // groupId -> Set of userIds
 
-const connectedUsers = new Map(); // userId → socket.id
+const connectedUsersKey = 'connectedUsers';
+const pendingNotifiesKey = 'pendingNotifies';
+
+function getUserIdsInGroup(groupId) {
+  const session = activeGroups.get(groupId);
+  return session ? session.members : [];
+}
 
 io.on('connection', async (socket) => {
   let currentUserId = null;
 
-  socket.on('register-user', ({ userId }) => {
+  socket.on('register-user', async ({ userId }) => {
     currentUserId = userId;
-    connectedUsers.set(userId, socket.id);
+    await pubClient.hset(connectedUsersKey, userId, socket.id);
     socket.join(`user-${userId}`);
-    console.log(`👤 Registered and joined user room: user-${userId}`);
+  
+    // Check if any group they created has a pending accept
+    const groupIds = await db.any(`
+      SELECT group_id FROM Groups WHERE creator_user_id = $1
+    `, [userId]);
+  
+    for (const { group_id } of groupIds) {
+      const accepted = await pubClient.hgetall(`${group_id}:accepted`);
+      if (accepted && Object.keys(accepted).length > 0) {
+        io.to(socket.id).emit('friend-accepted-invite');
+      }
+    }
   });
+  
+  
 
   socket.on('ready-for-invites', ({ userId }) => {
     console.log(`✅ User ${userId} is ready to receive invites`);
@@ -639,31 +680,35 @@ io.on('connection', async (socket) => {
     io.to(`user-${userId}`).emit('debug-reply', { message: `Reply to: ${message}` });
   });
 
-  socket.on('ready-to-swipe', async ({ groupId, userId }) => {
+  socket.on('ready-to-swipe', async ({ groupId, userId, lat, lng, types }) => {
+    console.log(`⚡ ready-to-swipe from user ${userId} in group ${groupId}`);
+  
+    if (!activeSessions.has(groupId)) {
+      activeSessions.set(groupId, { users: new Set(), ready: new Set(), types });
+    }
+  
     const session = activeSessions.get(groupId);
-    if (!session) return;
-
+    session.users.add(userId);
     session.ready.add(userId);
-    if (session.ready.size === session.users.size) {
-      console.log(`🚀 Everyone is ready for group ${groupId}, emitting start-swiping`);
-
-      const group = await db.oneOrNone(
-        'SELECT location_latitude, location_longitude FROM Groups WHERE group_id = $1',
-        [groupId]
-      );
-
-      if (!group) {
-        console.warn(`⚠️ Could not fetch location for group ${groupId}`);
-        return;
-      }
-
+  
+    const allReady = session.users.size > 0 && session.ready.size === session.users.size;
+  
+    if (allReady) {
+      console.log(`🚀 All users in group ${groupId} are ready, emitting start-swiping`);
+  
       io.to(`group-${groupId}`).emit('start-swiping', {
-        lat: parseFloat(group.location_latitude),
-        lng: parseFloat(group.location_longitude),
+        lat,
+        lng,
         types: session.types || []
       });
+      await pubClient.del(`${groupId}:accepted`);
+await pubClient.hdel(pendingNotifiesKey, groupId);
+
     }
+
   });
+  
+  
 
   socket.on('invite-user-by-username', async ({ username, groupId, lat, lng, types }) => {
     console.log('📨 Received invite-user-by-username event for:', username);
@@ -672,10 +717,11 @@ io.on('connection', async (socket) => {
     try {
       const target = await db.oneOrNone('SELECT user_id FROM users WHERE username = $1', [username]);
       if (!target) {
+        
         console.log('❌ No user found with username:', username);
         return;
       }
-
+      await pubClient.hset(pendingNotifiesKey, groupId, currentUserId);
       const room = `user-${target.user_id}`;
       if (!activeSessions.has(groupId)) {
         activeSessions.set(groupId, { users: new Set(), ready: new Set(), types });
@@ -709,42 +755,43 @@ io.on('connection', async (socket) => {
       console.error('❌ Error in invite-user-by-username:', err);
     }
   });
+// Track which user sent the invite (so we can notify them even after reconnects)
 
-  socket.on('accept-session-invite', async ({ groupId, userId }) => {
-    if (!activeSessions.has(groupId)) {
-      activeSessions.set(groupId, { users: new Set(), ready: new Set(), types: [] });
+socket.on('accept-session-invite', async ({ groupId, userId }) => {
+  if (!activeSessions.has(groupId)) {
+    activeSessions.set(groupId, { users: new Set(), ready: new Set(), types: [] });
+  }
+
+  const session = activeSessions.get(groupId);
+  session.users.add(userId);
+  session.ready.add(userId);
+
+  socket.join(`group-${groupId}`);
+
+  // ✅ Save this acceptance to Redis in case sender isn't watching right now
+  await pubClient.hset(`${groupId}:accepted`, userId, 'true');
+
+  // Try notifying sender (if connected)
+  const senderId = await pubClient.hget(pendingNotifiesKey, groupId);
+  if (senderId) {
+    const senderSocketId = await pubClient.hget(connectedUsersKey, senderId);
+    if (senderSocketId) {
+      console.log('📣 Emitting friend-accepted-invite to sender:', senderId, 'socket:', senderSocketId);
+      io.to(senderSocketId).emit('friend-accepted-invite');
+    
+    } else {
+      console.warn('⚠️ Sender socket not found in Redis for user:', senderId);
     }
+  }
+  
+  // Also fallback emit to group
+  io.to(`group-${groupId}`).emit('friend-accepted-invite');
+});
 
-    const session = activeSessions.get(groupId);
-    session.users.add(userId);
-    session.ready.add(userId);
 
-    if (session.ready.size === session.users.size) {
-      console.log(`🚀 Everyone is ready for group ${groupId}, emitting start-swiping`);
-
-      try {
-        const group = await db.oneOrNone(
-          `SELECT location_latitude, location_longitude FROM Groups WHERE group_id = $1`,
-          [groupId]
-        );
-
-        if (!group) {
-          console.warn('⚠️ Could not find group', groupId);
-          return;
-        }
-
-        io.to(`group-${groupId}`).emit('start-swiping', {
-          lat: group.location_latitude,
-          lng: group.location_longitude,
-          types: session.types || []
-        });
-
-        console.log('✅ Emitted start-swiping to group with coords:', group.location_latitude, group.location_longitude);
-      } catch (err) {
-        console.error('❌ Error fetching group lat/lng:', err);
-      }
-    }
-  });
+  
+  
+  
 
   socket.on('user-swipe', async ({ groupId, userId, restaurant }) => {
     try {

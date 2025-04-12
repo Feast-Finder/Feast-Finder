@@ -1,4 +1,71 @@
 {{>head}}
 {{>nav}}
+<script src="/socket.io/socket.io.js"></script>
 {{{body}}}
+
+<!-- Invitation Modal (triggered on any page) -->
+<div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="inviteModalLabel">Swipe Session Invite</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        A friend invited you to join a swiping session.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="joinSwipeBtn">Join Swiping</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const socket = io();
+  const userId = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
+  console.log('📡 main.hbs: socket loaded for userId:', userId);
+
+  socket.on('connect', () => {
+    console.log('✅ Connected with socket id:', socket.id);
+    socket.emit('register-user', { userId }, () => {
+      console.log('🧠 Re-registered after connection');
+      socket.emit('ready-for-invites', { userId });
+    });
+  });
+
+  // Optional: on reconnect
+  socket.io.on('reconnect', () => {
+    console.log('🔁 Socket reconnected');
+    socket.emit('register-user', { userId }, () => {
+      socket.emit('ready-for-invites', { userId });
+    });
+  });
+
+  // Only log that we got the event — UI logic stays in home.hbs
+  socket.on('friend-accepted-invite', () => {
+    console.log('🎉 friend-accepted-invite received globally');
+  });
+
+  // Invitation Modal — redirects to /home with payload
+  socket.on('invite-user-to-session', ({ groupId, lat, lng, types }) => {
+    console.log('📨 Invite received!');
+
+    const inviteModal = document.getElementById('inviteModal');
+    const joinBtn = document.getElementById('joinSwipeBtn');
+
+    if (inviteModal && joinBtn) {
+      const modal = bootstrap.Modal.getOrCreateInstance(inviteModal);
+      modal.show();
+
+      joinBtn.onclick = () => {
+        sessionStorage.setItem('invitePayload', JSON.stringify({
+          groupId, lat, lng, types
+        }));
+        window.location.href = '/home';
+      };
+    }
+  });
+</script>
+
 {{>footer}}

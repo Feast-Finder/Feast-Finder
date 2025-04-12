@@ -1,3 +1,5 @@
+version: '3.9'
+
 services:
   db:
     image: postgres:14
@@ -15,7 +17,6 @@ services:
 
   web1:
     image: node:lts
-    user: 'node'
     working_dir: /repository
     env_file: .env
     environment:
@@ -26,12 +27,11 @@ services:
     ports:
       - '3001:3000'
     volumes:
-      - ./:/repository
+      - .:/repository:cached
     command: 'npm start'
 
   web2:
     image: node:lts
-    user: 'node'
     working_dir: /repository
     env_file: .env
     environment:
@@ -42,7 +42,7 @@ services:
     ports:
       - '3002:3000'
     volumes:
-      - ./:/repository
+      - .:/repository:cached
     command: 'npm start'
 
 volumes:
