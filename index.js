@@ -781,12 +781,44 @@ io.on('connection', async (socket) => {
         [groupId, userId, restaurantId, restaurant.swipeDirection]
       );
 
-      console.log(`✅ Emitting peer swipe to ${groupId}`);
-      io.to(`group-${groupId}`).emit('peer-swipe', {
-        userId,
-        restaurantId,
-        direction: restaurant.swipeDirection
+      let match = true;
+      const swipeChecks = Array.from(activeGroups.get(groupId)).map(async (user) => {
+        const swipeResult = await db.oneOrNone(
+          `SELECT swipe_direction FROM swipes s
+           WHERE s.group_id = $1 AND s.user_id = $2 AND s.restaurant_id = $3`,
+           [groupId, user, restaurantId]
+        );
+
+        const swipeDirection = swipeResult ? swipeResult.swipe_direction : null;
+
+        if (!match || !swipeDirection || swipeDirection === 'left') {
+          match = false;
+        }
       });
+
+      await Promise.all(swipeChecks);
+
+      if (match) {
+        console.log('✅ It\'s a match');
+        console.log(`✅ Emitting group match to ${groupId}`);
+        io.to(`group-${groupId}`).emit('group-match', {
+          restaurantId
+        });
+
+        // Delete group swipes for the current session
+        await db.none(`DELETE FROM swipes WHERE group_id = $1`, [groupId]);
+
+      } else {
+        // NOTE: Currently, the client does nothing with this
+        console.log('❌ No match');
+        console.log(`✅ Emitting peer swipe to ${groupId}`);
+        io.to(`group-${groupId}`).emit('peer-swipe', {
+          userId,
+          restaurantId,
+          direction: restaurant.swipeDirection
+        });
+      }
+
     } catch (err) {
       console.error('❌ Error handling swipe:', err);
     }

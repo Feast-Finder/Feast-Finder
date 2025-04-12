@@ -932,10 +932,11 @@ socket.on('start-swiping', ({ groupId, lat, lng, types }) => {
 });
 
 socket.on('peer-swipe', ({ userId, restaurantId, direction }) => {
-  console.log(`
-  userId: ${userId},
-  restaurantId: ${restaurantId},
-  direction: ${direction}`);
+  console.log({ userId, restaurantId, direction });
+});
+
+socket.on('group-match', ({ restaurantId }) => {
+  console.log('MAAAATCH');
 });
 
 function sockHandleVote(liked) {
