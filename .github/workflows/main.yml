@@ -20,7 +20,16 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 20.3.255.58 >> ~/.ssh/known_hosts
 
+      - name: Check for changes in README or Handlebars/HTML files
+        id: file-check
+        run: |
+          git diff --name-only HEAD^ HEAD > changed_files.txt
+          if grep -E "README.md|.*\\.html|.*\\.handlebars" changed_files.txt; then
+            echo "skip-deploy=true" >> $GITHUB_ENV
+          fi
+
       - name: Trigger git pull on server
+        if: env.skip-deploy != 'true'
         run: |
           ssh feast@20.3.255.58 <<EOF
             cd /home/feast/Feast-Finder
