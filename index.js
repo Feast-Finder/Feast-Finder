@@ -775,17 +775,32 @@ io.on('connection', async (socket) => {
         restaurantId = newRest.restaurant_id;
       }
 
-      await db.none(
-        `INSERT INTO Swipes (group_id, user_id, restaurant_id, swipe_direction)
-         VALUES ($1, $2, $3, $4)`,
-        [groupId, userId, restaurantId, restaurant.swipeDirection]
+      // Check if user has already voted on this restaurant
+      const prevUserVote = await db.oneOrNone(
+        `SELECT swipe_id FROM swipes
+         WHERE group_id = $1 AND user_id = $2 AND restaurant_id = $3`,
+        [groupId, userId, restaurantId]
       );
+
+      if (prevUserVote) {
+        await db.none(
+          `UPDATE swipes SET swipe_direction = $4
+           WHERE group_id = $1 AND user_id = $2 AND restaurant_id = $3`,
+          [groupId, userId, restaurantId, restaurant.swipeDirection]
+        );
+      } else {
+        await db.none(
+          `INSERT INTO Swipes (group_id, user_id, restaurant_id, swipe_direction)
+           VALUES ($1, $2, $3, $4)`,
+          [groupId, userId, restaurantId, restaurant.swipeDirection]
+        );
+      }
 
       let match = true;
       const swipeChecks = Array.from(activeGroups.get(groupId)).map(async (user) => {
         const swipeResult = await db.oneOrNone(
-          `SELECT swipe_direction FROM swipes s
-           WHERE s.group_id = $1 AND s.user_id = $2 AND s.restaurant_id = $3`,
+          `SELECT swipe_direction FROM swipes
+           WHERE group_id = $1 AND user_id = $2 AND restaurant_id = $3`,
            [groupId, user, restaurantId]
         );
 
@@ -799,18 +814,14 @@ io.on('connection', async (socket) => {
       await Promise.all(swipeChecks);
 
       if (match) {
-        console.log('✅ It\'s a match');
+        console.log(`✅ It's a match (group : ${groupId}, restaurant : ${restaurantId})`);
         console.log(`✅ Emitting group match to ${groupId}`);
         io.to(`group-${groupId}`).emit('group-match', {
           restaurant
         });
-
-        // Delete group swipes for the current session
-        await db.none(`DELETE FROM swipes WHERE group_id = $1`, [groupId]);
-
       } else {
         // NOTE: Currently, the client does nothing with this
-        console.log('❌ No match');
+        console.log(`❌ No match (group : ${groupId}, restaurant : ${restaurantId})`);
         console.log(`✅ Emitting peer swipe to ${groupId}`);
         io.to(`group-${groupId}`).emit('peer-swipe', {
           userId,
@@ -818,7 +829,6 @@ io.on('connection', async (socket) => {
           direction: restaurant.swipeDirection
         });
       }
-
     } catch (err) {
       console.error('❌ Error handling swipe:', err);
     }
