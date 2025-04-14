@@ -148,6 +148,7 @@
                 </div>
                 <div class="d-grid gap-2">
                     <a id="match-restaurant-link" class="btn btn-primary" target="_blank">View on Google Maps</a>
+                    <button class="btn btn-primary">Play a minigame to decide who pays</button>
                     <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Continue Swiping</button>
                 </div>
             </div>
@@ -800,78 +801,11 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
                 });
             } catch (error) {
                 console.error('Error in showNextRestaurant:', error);
-                currentIndex++;
                 if (currentIndex < currentRestaurants.length) {
                     showNextRestaurant();
                 } else {
                     alert('No more restaurants to show!');
                 }
-            }
-        }
-
-        async function handleVote(liked) {
-            try {
-                if (!currentRestaurants || !currentRestaurants[currentIndex]) {
-                    console.error('No current restaurant to vote on');
-                    alert('Error: No restaurant to vote on');
-                    return;
-                }
-                
-                const restaurant = currentRestaurants[currentIndex];
-                console.log('Voting for restaurant:', restaurant);
-                
-                try {
-                    const response = await fetch('/restaurants/vote', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            group_id: currentGroupId,
-                            place_id: restaurant.place_id,
-                            restaurant_name: restaurant.name,
-                            liked: liked
-                        })
-                    });
-
-                    const data = await response.json();
-                    if (data.success && data.isMatch) {
-                        // Show match modal
-                        document.getElementById('match-restaurant-name').textContent = data.restaurant.restaurant_name;
-                        const matchImage = document.getElementById('match-restaurant-image');
-                        
-                        // Try to get the restaurant photo
-                        if (restaurant.photos && restaurant.photos[0]) {
-                            try {
-                                matchImage.src = restaurant.photos[0].getUrl({
-                                    maxWidth: 800,
-                                    maxHeight: 600
-                                });
-                            } catch (error) {
-                                matchImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
-                            }
-                        } else {
-                            matchImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
-                        }
-                        
-                        document.getElementById('match-restaurant-link').href = 
-                            `https://www.google.com/maps/place/?q=place_id:${data.restaurant.place_id}`;
-                        matchModal.show();
-                    }
-                } catch (error) {
-                    console.error('Error in vote fetch:', error);
-                }
-
-                // Show next restaurant
-                currentIndex++;
-                if (currentIndex < currentRestaurants.length) {
-                    showNextRestaurant();
-                } else {
-                    alert('No more restaurants to show!');
-                }
-            } catch (error) {
-                console.error('Error in handleVote:', error);
-                alert('Failed to record vote');
             }
         }
 
@@ -879,7 +813,7 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
             restaurantCard.classList.add('swipe-right');
             setTimeout(() => {
                 restaurantCard.classList.remove('swipe-right');
-                sockHandleVote(true);
+                handleVote(true);
             }, 500);
         });
 
@@ -887,7 +821,7 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
             restaurantCard.classList.add('swipe-left');
             setTimeout(() => {
                 restaurantCard.classList.remove('swipe-left');
-                sockHandleVote(false);
+                handleVote(false);
             }, 500);
         });
 
@@ -956,7 +890,7 @@ socket.on('group-match', ({ restaurant }) => {
   matchModal.show();
 });
 
-function sockHandleVote(liked) {
+function handleVote(liked) {
   if (!currentRestaurants || !currentRestaurants[currentIndex]) {
     console.error('No current restaurant to vote on');
     alert('Error: No restaurant to vote on');
@@ -974,6 +908,14 @@ function sockHandleVote(liked) {
     userId     : {{user.user_id}},
     restaurant : restaurant
   });
+
+  // Show next restaurant
+  currentIndex++;
+  if (currentIndex < currentRestaurants.length) {
+    showNextRestaurant();
+  } else {
+    alert('No more restaurants to show!');
+  }
 }
 
 }
