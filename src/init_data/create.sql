@@ -138,7 +138,8 @@ CREATE TABLE IF NOT EXISTS Swipes (
     swiped_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (group_id) REFERENCES Groups(group_id),
     FOREIGN KEY (user_id) REFERENCES Users(user_id),
-    FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id)
+    FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id),
+    UNIQUE (group_id, user_id, restaurant_id) -- ✅ Required for ON CONFLICT
 );
 
 COMMENT ON TABLE Swipes IS 'Records user swipes on restaurants within a group.';

@@ -22,85 +22,54 @@
 </div>
 
 <script>
-  const USER_ID = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
-  const socket = io();
+const USER_ID = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
+let socket = io();
 
-  socket.on('connect', () => {
+socket.on('connect', () => {
+  if (USER_ID) {
     socket.emit('register-user', { userId: USER_ID });
     socket.emit('ready-for-invites', { userId: USER_ID });
-
-  });
-
-
-socket.on('invite-user-to-session', async ({ groupId, lat, lng, types }) => {
-  const redirected = sessionStorage.getItem('redirectedFromInvite');
-
-  // 🛑 Don't show modal if already accepted
-  if (redirected === 'accepted') return;
-
-  try {
-    const res = await fetch(`/session/status?groupId=${groupId}`);
-    const data = await res.json();
-    if (data.cancelled) return;
-
-    sessionStorage.setItem('invitePayload', JSON.stringify({ groupId, lat, lng, types }));
-    sessionStorage.setItem('redirectedFromInvite', 'pending'); // Mark pending only
-
-    const modalEl = document.getElementById('inviteModal');
-    const joinBtn = document.getElementById('joinSwipeBtn');
-    if (!modalEl || !joinBtn) return;
-
-    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-    modal.show();
-
-    joinBtn.onclick = () => {
-      // ✅ Set flag before redirecting
-      sessionStorage.setItem('redirectedFromInvite', 'accepted');
-      modal.hide();
-      document.body.classList.remove('modal-open');
-      document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-
-      // ✅ Redirect to restore swiping session
-      window.location.href = '/home';
-    };
-  } catch (err) {
-    console.error('❌ Failed Redis check in invite-user-to-session:', err);
   }
 });
 
+// Show invite modal when an invite is received
+socket.on('invite-user-to-session', ({ groupId, lat, lng, types }) => {
+  const redirected = sessionStorage.getItem('redirectedFromInvite');
+  if (redirected === 'accepted') return;
+
+  sessionStorage.setItem('invitePayload', JSON.stringify({ groupId, lat, lng, types }));
+  sessionStorage.setItem('redirectedFromInvite', 'pending');
+
+  const modalEl = document.getElementById('inviteModal');
+  const joinBtn = document.getElementById('joinSwipeBtn');
+  if (!modalEl || !joinBtn) return;
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+
+  joinBtn.onclick = () => {
+    sessionStorage.setItem('redirectedFromInvite', 'accepted');
+    modal.hide();
+    document.body.classList.remove('modal-open');
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    window.location.href = '/home'; // redirect to home to begin session
+  };
+});
+
+// Optional: handle session cancellation
 socket.on('swipe-session-cancelled', ({ groupId }) => {
   console.log('❌ Session was cancelled for group:', groupId);
-
-  // Clear invite data
   sessionStorage.removeItem('invitePayload');
-  sessionStorage.removeItem('redirectedFromInvite');
+  sessionStorage.setItem('redirectedFromInvite', 'cancelled');
 
-  inviteState = {
-    groupId: null,
-    lat: null,
-    lng: null,
-    types: [],
-    isSender: false
-  };
-
-  // Hide invite modal
   const modalEl = document.getElementById('inviteModal');
   if (modalEl) {
     const modal = bootstrap.Modal.getInstance(modalEl);
-    modal.hide();
+    modal?.hide();
   }
-  const modalE = document.getElementById('waitingOverlay');
-  if (modalE) {
-    const modal = bootstrap.Modal.getInstance(modalE);
-    modal.hide();
-  }
- 
-sessionStorage.setItem('redirectedFromInvite', 'cancelled');
-
-  disableSwipingUI();
 });
-
 </script>
+
 
 
 

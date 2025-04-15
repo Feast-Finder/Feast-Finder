@@ -680,7 +680,7 @@ io.on('connection', (socket) => {
   socket.on('invite-user-by-username', async ({ username, groupId, lat, lng, types }) => {
     const target = await pubClient.hget('usernamesToIds', username);
     if (!target) return;
-
+    await pubClient.set(`activeGroup:${currentUserId}`, groupId); 
     await pubClient.hset(`invitePending:${target}`, groupId, JSON.stringify({ groupId, lat, lng, types }));
     await pubClient.hset(pendingNotifiesKey, groupId, currentUserId);
     await pubClient.hset('groupInvitees', groupId, target);
@@ -689,18 +689,44 @@ io.on('connection', (socket) => {
       const sockets = await io.in(`user-${target}`).fetchSockets();
       if (sockets.length > 0) {
         console.log(`✅ Found socket for user-${target}, sending invite`);
-        io.to(`user-${target}`).emit('invite-user-to-session', { groupId, lat, lng, types });
+        io.to(`user-${target}`).emit('invite-user-to-session', {
+          groupId, // ✅ lowercase
+          lat,
+          lng,
+          types,
+          senderId: currentUserId // optional
+        });
+        
         return;
       }
       await new Promise(res => setTimeout(res, 250));
     }
+   
+await pubClient.set(`activeGroup:${currentUserId}`, groupId);
+
   });
 
-  socket.on('join-session', ({ groupId, userId }) => {
+  socket.on('join-session', async (payload) => {
+    const groupId = payload.groupId;
+    const userId = payload.userId;
+  
+    if (!groupId || !userId) {
+      console.error('❌ Missing groupId or userId in join-session');
+      return;
+    }
+  
     if (!activeGroups.has(groupId)) activeGroups.set(groupId, new Set());
     activeGroups.get(groupId).add(userId);
     socket.join(`group-${groupId}`);
+  
+    try {
+      await pubClient.set(`activeGroup:${userId}`, groupId);
+      console.log(`✅ Stored active group for user ${userId}: ${groupId}`);
+    } catch (err) {
+      console.error('❌ Failed to store active group in Redis:', err);
+    }
   });
+  
 
   socket.on('accept-session-invite', async ({ groupId, userId }) => {
     if (!activeSessions.has(groupId)) {
@@ -709,6 +735,12 @@ io.on('connection', (socket) => {
     const session = activeSessions.get(groupId);
     session.users.add(userId);
     session.ready.add(userId);
+// Add user to GroupMembers table if not already present
+await db.none(`
+  INSERT INTO groupmembers (group_id, user_id)
+  VALUES ($1, $2)
+  ON CONFLICT (group_id, user_id) DO NOTHING
+`, [groupId, userId]);
 
     await pubClient.hset(`${groupId}:accepted`, userId, 'true');
 
@@ -757,9 +789,157 @@ io.on('connection', (socket) => {
     await pubClient.hdel(`inviteCancelled:${inviteeId}`, groupId);
     await pubClient.del(`${groupId}:accepted`);
     await pubClient.del(`groupInvitees:${groupId}`);
-    
+    await db.none('DELETE FROM swipes WHERE group_id = $1', [groupId]);
   });
 });
+async function getPhotoUrlFromDBOrPlaces(place_id) {
+  try {
+    const result = await db.oneOrNone(
+      `SELECT image_url FROM restaurants WHERE api_restaurant_id = $1`,
+      [place_id]
+    );
+
+    if (result?.image_url) {
+      return result.image_url;
+    } else {
+      return 'https://via.placeholder.com/800x600?text=Restaurant+Image';
+    }
+  } catch (err) {
+    console.error('❌ Error fetching image_url from DB:', err);
+    return 'https://via.placeholder.com/800x600?text=Restaurant+Image';
+  }
+}
+
+
+
+
+app.post('/restaurants/vote', async (req, res) => {
+  const { groupId, place_id, restaurant_name, liked } = req.body;
+  const user_id = req.session.user?.user_id;
+
+  console.log('🚨 Incoming vote payload:', req.body);
+
+  if (!user_id || !groupId || !place_id) {
+    return res.status(400).json({ success: false, error: 'Missing required fields' });
+  }
+
+  try {
+    // Step 1: Get or insert restaurant
+    let restaurant = await db.oneOrNone(`
+      SELECT restaurant_id FROM restaurants WHERE api_restaurant_id = $1
+    `, [place_id]);
+
+    if (!restaurant) {
+      // Insert minimal info if it doesn't exist
+      await db.none(`
+        INSERT INTO restaurants (api_restaurant_id, name, latitude, longitude)
+        VALUES ($1, $2, 0, 0)
+        ON CONFLICT (api_restaurant_id) DO NOTHING
+      `, [place_id, restaurant_name]);
+      
+      restaurant = await db.one(`
+        SELECT restaurant_id FROM restaurants WHERE api_restaurant_id = $1
+      `, [place_id]);
+      
+    }
+
+    const restaurant_id = restaurant.restaurant_id;
+
+    // Step 2: Save or update the swipe
+    await db.none(`
+      INSERT INTO swipes (group_id, user_id, restaurant_id, swipe_direction)
+      VALUES ($1, $2, $3, 'right')
+      ON CONFLICT (group_id, user_id, restaurant_id) DO UPDATE SET swipe_direction = 'right'
+    `, [groupId, user_id, restaurant_id]);
+
+    // Step 3: Only check for match if user liked it
+    if (liked) {
+      const { count } = await db.one(`
+        SELECT COUNT(DISTINCT user_id) FROM swipes
+        WHERE group_id = $1 AND restaurant_id = $2 AND swipe_direction = 'right'
+      `, [groupId, restaurant_id]);
+      const groupMembers = await db.any(`
+        SELECT * FROM groupmembers WHERE group_id = $1
+      `, [groupId]);
+      
+      console.log(`👥 Raw group members for group ${groupId}:`, groupMembers);
+      
+      const { total } = await db.one(`
+        SELECT COUNT(*) AS total FROM groupmembers WHERE group_id = $1
+      `, [groupId]);
+      
+      
+      console.log('🧮 Match check — count of likes:', count, 'group total members:', total);
+
+      if (parseInt(count) === parseInt(total)) {
+        console.log(`✅ Match found in group ${groupId} for ${restaurant_name}`);
+
+        const photoUrl = await getPhotoUrlFromDBOrPlaces(place_id);
+
+        // Clean up swipes after match
+        await db.none(`DELETE FROM swipes WHERE group_id = $1`, [groupId]);
+
+// 1. Emit to entire group (still useful if swiping in sync)
+io.to(`group-${groupId}`).emit('match-found', {
+  restaurant: {
+    place_id,
+    restaurant_name,
+    photoUrl: photoUrl || null,
+  }
+});
+
+// 2. Also send directly to each user socket in the group
+const members = await db.any(`
+  SELECT user_id FROM groupmembers WHERE group_id = $1
+`, [groupId]);
+
+for (const member of members) {
+  const socketId = await pubClient.hget('connectedUsers', member.user_id);
+  if (socketId) {
+    io.to(socketId).emit('match-found', {
+      restaurant: {
+        place_id,
+        restaurant_name,
+        photoUrl: photoUrl || null,
+      }
+    });
+  }
+}
+
+
+        return res.json({ success: true, isMatch: true, restaurant: { place_id, restaurant_name, photoUrl } });
+      }
+    }
+
+    res.json({ success: true, isMatch: false });
+
+  } catch (err) {
+    console.error('❌ Error in /restaurants/vote:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// Example route to get groupId for a sender
+app.get('/session/group-for-sender', async (req, res) => {
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ success: false });
+
+  try {
+    const groupId = await pubClient.get(`activeGroup:${userId}`);
+    if (!groupId) return res.json({ success: false });
+
+    res.json({ success: true, groupId });
+  } catch (err) {
+    console.error('Error fetching group for sender:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
+
+
+
+  
+
 
 
 // *****************************************************
