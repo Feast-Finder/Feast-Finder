@@ -632,285 +632,132 @@ app.get('/session/status', async (req, res) => {
 // <!-- Section 6 : Socket.IO Real-Time Sync Logic -->
 // *****************************************************
 
-const readyForInvite = new Set(); // userId → is ready
-const activeGroups = new Map();  // groupId -> Set of userIds
-
 const connectedUsersKey = 'connectedUsers';
 const pendingNotifiesKey = 'pendingNotifies';
 
-function getUserIdsInGroup(groupId) {
-  const session = activeGroups.get(groupId);
-  return session ? session.members : [];
-}
 
-io.on('connection', async (socket) => {
+const readyForInvite = new Set();
+const activeGroups = new Map();
+
+io.on('connection', (socket) => {
   let currentUserId = null;
 
   socket.on('register-user', async ({ userId }) => {
     currentUserId = userId;
     await pubClient.hset(connectedUsersKey, userId, socket.id);
     socket.join(`user-${userId}`);
-    const pendingInvite = await pubClient.hgetall(`invitePending:${userId}`);
+  
+    try {
+      const user = await db.one('SELECT username FROM users WHERE user_id = $1', [userId]);
+      await pubClient.hset('usernamesToIds', user.username, userId);
+    } catch (err) {
+      console.error('Failed to cache username in Redis:', err);
+    }
+    const [pendingInvite, cancelled] = await Promise.all([
+      pubClient.hgetall(`invitePending:${userId}`),
+      pubClient.hgetall(`inviteCancelled:${userId}`)
+    ]);
+
     for (const [groupId, raw] of Object.entries(pendingInvite)) {
+      if (cancelled && cancelled[groupId]) {
+        await pubClient.hdel(`invitePending:${userId}`, groupId);
+        continue;
+      }
       const payload = JSON.parse(raw);
-      console.log(`📬 Re-sending pending invite to user ${userId} for group ${groupId}`);
       io.to(socket.id).emit('invite-user-to-session', payload);
     }
-    
-    const cancelled = await pubClient.hgetall(`inviteCancelled:${userId}`);
-for (const [groupId] of Object.entries(cancelled)) {
-  console.log(`🔁 Re-sending swipe-session-cancelled to ${userId} for group ${groupId}`);
-  io.to(socket.id).emit('swipe-session-cancelled');
 
-  // Clean up (optional: keep for TTL cleanup or session awareness)
-  await pubClient.hdel(`inviteCancelled:${userId}`, groupId);
-}
-
-    // 🧠 Add console here:
-    console.log(`📌 Registered user ${userId} with socket ${socket.id}`);
-  
-    const groupIds = await db.any(`
-      SELECT group_id FROM Groups WHERE creator_user_id = $1
-    `, [userId]);
-  
-    for (const { group_id } of groupIds) {
-      const accepted = await pubClient.hgetall(`${group_id}:accepted`);
-      if (accepted && Object.keys(accepted).length > 0) {
-        console.log(`📦 Re-sending friend-accepted-invite for group ${group_id} to user ${userId}`);
-        io.to(socket.id).emit('friend-accepted-invite');
-      }
-    }    
+    for (const groupId of Object.keys(cancelled)) {
+      io.to(socket.id).emit('swipe-session-cancelled', { groupId });
+      await pubClient.hdel(`inviteCancelled:${userId}`, groupId);
+    }
   });
-  
-  
 
   socket.on('ready-for-invites', ({ userId }) => {
-    console.log(`✅ User ${userId} is ready to receive invites`);
     readyForInvite.add(userId);
+  });
+
+  socket.on('invite-user-by-username', async ({ username, groupId, lat, lng, types }) => {
+    const target = await pubClient.hget('usernamesToIds', username);
+    if (!target) return;
+
+    await pubClient.hset(`invitePending:${target}`, groupId, JSON.stringify({ groupId, lat, lng, types }));
+    await pubClient.hset(pendingNotifiesKey, groupId, currentUserId);
+    await pubClient.hset('groupInvitees', groupId, target);
+
+    for (let i = 0; i < 20; i++) {
+      const sockets = await io.in(`user-${target}`).fetchSockets();
+      if (sockets.length > 0) {
+        console.log(`✅ Found socket for user-${target}, sending invite`);
+        io.to(`user-${target}`).emit('invite-user-to-session', { groupId, lat, lng, types });
+        return;
+      }
+      await new Promise(res => setTimeout(res, 250));
+    }
   });
 
   socket.on('join-session', ({ groupId, userId }) => {
     if (!activeGroups.has(groupId)) activeGroups.set(groupId, new Set());
     activeGroups.get(groupId).add(userId);
     socket.join(`group-${groupId}`);
-    console.log(`🧩 ${userId} joined group ${groupId}`);
   });
 
-  socket.on('debug-message', ({ userId, message }) => {
-    io.to(`user-${userId}`).emit('debug-reply', { message: `Reply to: ${message}` });
-  });
-
-  socket.on('ready-to-swipe', async ({ groupId, userId, lat, lng, types }) => {
-    console.log(`⚡ ready-to-swipe from user ${userId} in group ${groupId}`);
-  
+  socket.on('accept-session-invite', async ({ groupId, userId }) => {
     if (!activeSessions.has(groupId)) {
-      activeSessions.set(groupId, { users: new Set(), ready: new Set(), types });
+      activeSessions.set(groupId, { users: new Set(), ready: new Set(), types: [] });
     }
-  
     const session = activeSessions.get(groupId);
     session.users.add(userId);
     session.ready.add(userId);
-  
-    const allReady = session.users.size > 0 && session.ready.size === session.users.size;
-  
-    if (allReady) {
-      console.log(`🚀 All users in group ${groupId} are ready, emitting start-swiping`);
-  
-      io.to(`group-${groupId}`).emit('start-swiping', {
-        lat,
-        lng,
-        types: session.types || []
-      });
+
+    await pubClient.hset(`${groupId}:accepted`, userId, 'true');
+
+    const senderId = await pubClient.hget(pendingNotifiesKey, groupId);
+    if (senderId) {
+      const senderSocketId = await pubClient.hget(connectedUsersKey, senderId);
+      if (senderSocketId) io.to(senderSocketId).emit('friend-accepted-invite');
+    }
+
+    io.to(`group-${groupId}`).emit('friend-accepted-invite');
+    await pubClient.hdel(`invitePending:${userId}`, groupId);
+  });
+
+  socket.on('ready-to-swipe', async ({ groupId, userId, lat, lng, types }) => {
+    if (!activeSessions.has(groupId)) {
+      activeSessions.set(groupId, { users: new Set(), ready: new Set(), types });
+    }
+    const session = activeSessions.get(groupId);
+    session.users.add(userId);
+    session.ready.add(userId);
+
+    if (session.users.size === session.ready.size) {
+      io.to(`group-${groupId}`).emit('start-swiping', { lat, lng, types });
       await pubClient.del(`${groupId}:accepted`);
-await pubClient.hdel(pendingNotifiesKey, groupId);
-
-    }
-
-  });
-  
-  
-
-  socket.on('invite-user-by-username', async ({ username, groupId, lat, lng, types }) => {
-    console.log('📨 Received invite-user-by-username event for:', username);
-    console.log(`📤 Sending invite with types:`, types);
-
-    try {
-      const target = await db.oneOrNone('SELECT user_id FROM users WHERE username = $1', [username]);
-      if (!target) {
-        
-        console.log('❌ No user found with username:', username);
-        return;
-      }
-      await pubClient.hset(`invitePending:${target.user_id}`, groupId, JSON.stringify({
-        groupId, lat, lng, types
-      }));      
-      await pubClient.hset(pendingNotifiesKey, groupId, currentUserId);
-     // Save mapping of groupId to inviteeId (even if they accept later)
-      await pubClient.hset('groupInvitees', groupId, target.user_id); // 👈 new
-
-      await pubClient.hset('pendingInvites', groupId, target.user_id);
-      const room = `user-${target.user_id}`;
-      if (!activeSessions.has(groupId)) {
-        activeSessions.set(groupId, { users: new Set(), ready: new Set(), types });
-      } else {
-        activeSessions.get(groupId).types = types;
-      }
-
-
-      for (let i = 0; i < 20; i++) {
-        const sockets = await io.in(room).fetchSockets();
-
-
-        if (sockets.length > 0) {
-          console.log(`✅ User ${target.user_id} found in room ${room}, sending invite`);
-          io.to(room).emit('invite-user-to-session', {
-            groupId,
-            lat,
-            lng,
-            types
-          });
-
-          return;
-        }
-
-        console.log(`⏳ Waiting for ${room} to be ready... Retry ${i + 1}`);
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      }
-
-      console.warn(`❌ Failed to emit to ${room} after retries`);
-    } catch (err) {
-      console.error('❌ Error in invite-user-by-username:', err);
+      await pubClient.hdel(pendingNotifiesKey, groupId);
     }
   });
-// Track which user sent the invite (so we can notify them even after reconnects)
 
-socket.on('accept-session-invite', async ({ groupId, userId }) => {
-  if (!activeSessions.has(groupId)) {
-    activeSessions.set(groupId, { users: new Set(), ready: new Set(), types: [] });
-  }
+  socket.on('cancel-swipe-session', async ({ groupId, userId }) => {
+    await pubClient.sadd('cancelledGroups', groupId);
+    io.to(socket.id).emit('cancel-ack', { groupId });
 
-  const session = activeSessions.get(groupId);
-  session.users.add(userId);
-  session.ready.add(userId);
+    const inviteeId = await pubClient.hget('groupInvitees', groupId);
+    if (inviteeId) {
+      const inviteeSocketId = await pubClient.hget('connectedUsers', inviteeId);
+      console.log('🧹 Cancel logic triggered for group:', groupId);
+      console.log('🔗 Invitee ID:', inviteeId);
+      console.log('📡 Invitee socket ID:', inviteeSocketId);
+      if (inviteeSocketId) {
+        io.to(inviteeSocketId).emit('swipe-session-cancelled', { groupId });
+      }
+    }
 
-  socket.join(`group-${groupId}`);
-
-  // ✅ Save this acceptance to Redis in case sender isn't watching right now
-  await pubClient.hset(`${groupId}:accepted`, userId, 'true');
-
-  // Try notifying sender (if connected)
-  const senderId = await pubClient.hget(pendingNotifiesKey, groupId);
-  if (senderId) {
-    const senderSocketId = await pubClient.hget(connectedUsersKey, senderId);
-    if (senderSocketId) {
-      console.log('📣 Emitting friend-accepted-invite to sender:', senderId, 'socket:', senderSocketId);
-      io.to(senderSocketId).emit('friend-accepted-invite');
     
-    } else {
-      console.warn('⚠️ Sender socket not found in Redis for user:', senderId);
-    }
-  }
-  
-  // Also fallback emit to group
-  io.to(`group-${groupId}`).emit('friend-accepted-invite');
-  await pubClient.hdel(`invitePending:${userId}`, groupId);
-
-});
-
-
-socket.on('cancel-swipe-session', async ({ groupId, userId }) => {
-  console.log(`❌ User ${userId} cancelled swipe session for group ${groupId}`);
-
-  // 1. Clear in-memory session
-  activeSessions.delete(groupId);
-
-  // 2. Delete Redis tracking data
-  await Promise.all([
-    pubClient.del(`${groupId}:accepted`),
-    pubClient.hdel('pendingNotifies', groupId),
-    pubClient.hdel('pendingInvites', groupId)
-  ]);
-
-  // 3. Get invitee ID from Redis
-  const inviteeId = await pubClient.hget('groupInvitees', groupId);
-
-  if (inviteeId) {
-    console.log(`📨 Preparing to notify invitee (${inviteeId})`);
-
-    // Remove their invite payload
-    await Promise.all([
-      pubClient.hdel(`invitePending:${inviteeId}`, groupId),
-      pubClient.hdel('groupInvitees', groupId),
-      pubClient.hset(`inviteCancelled:${inviteeId}`, groupId, 'true')  // cache cancel for reconnect
-    ]);
-
-    const inviteeSocketId = await pubClient.hget(connectedUsersKey, inviteeId);
-
-    if (inviteeSocketId) {
-      console.log(`📣 Emitting swipe-session-cancelled to socket ${inviteeSocketId}`);
-      io.to(inviteeSocketId).emit('swipe-session-cancelled');
-    } else {
-      console.warn(`⚠️ Invitee ${inviteeId} not currently connected — will resend on reconnect`);
-    }
-  } else {
-    console.warn(`⚠️ No inviteeId found in groupInvitees for group ${groupId}`);
-  }
-});
-
-
-
-
-
-
-
-
-  
-
-  socket.on('user-swipe', async ({ groupId, userId, restaurant }) => {
-    try {
-      let restaurantId;
-      const existing = await db.oneOrNone(
-        `SELECT restaurant_id FROM Restaurants WHERE api_restaurant_id = $1`,
-        [restaurant.place_id]
-      );
-
-      if (existing) {
-        restaurantId = existing.restaurant_id;
-      } else {
-        const newRest = await db.one(
-          `INSERT INTO Restaurants (api_restaurant_id, name, address, latitude, longitude, api_data)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           RETURNING restaurant_id`,
-          [
-            restaurant.place_id,
-            restaurant.name,
-            restaurant.address || '',
-            restaurant.lat,
-            restaurant.lng,
-            restaurant
-          ]
-        );
-        restaurantId = newRest.restaurant_id;
-      }
-
-      await db.none(
-        `INSERT INTO Swipes (group_id, user_id, restaurant_id, swipe_direction)
-         VALUES ($1, $2, $3, $4)`,
-        [groupId, userId, restaurantId, restaurant.swipeDirection]
-      );
-
-      socket.to(`group-${groupId}`).emit('peer-swipe', {
-        userId,
-        restaurantId,
-        direction: restaurant.swipeDirection
-      });
-    } catch (err) {
-      console.error('❌ Error handling swipe:', err);
-    }
-  });
-
-  socket.on('disconnect', () => {
-    console.log(`🔌 Socket ${socket.id} disconnected`);
+    await pubClient.hdel(`invitePending:${inviteeId}`, groupId); // not userId
+    await pubClient.hdel(`inviteCancelled:${inviteeId}`, groupId);
+    await pubClient.del(`${groupId}:accepted`);
+    await pubClient.del(`groupInvitees:${groupId}`);
+    
   });
 });
 

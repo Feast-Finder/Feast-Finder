@@ -158,7 +158,7 @@
 <!-- Waiting Overlay -->
 <div id="waitingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-75 text-white fw-bold fs-4 d-none" style="z-index: 1050;">
   <h3 class="text-white mb-3">Waiting for friend to join...</h3>
-  <button class="btn btn-danger" id="cancelInviteBtn">Cancel Invite</button>
+  <button type="button" class="btn btn-danger" id="cancelInviteBtn">Cancel Invite</button>
 </div>
 
 
@@ -259,139 +259,13 @@
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxYA0OMGoBZ093MoeamguWrt7jfxl44EU&libraries=places&loading=async&callback=initMap"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const invitePayload = sessionStorage.getItem('invitePayload');
+const USER_ID = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
+let GROUP_ID = null;
+let socket = io();
 
-  if (invitePayload) {
-    const { groupId, lat, lng, types } = JSON.parse(invitePayload);
-    console.log('🔁 Resuming UI for session', groupId);
-
-    // ✅ ONLY UI logic here — no need to emit sockets again
-    document.getElementById('waitingOverlay')?.classList.add('d-none');
-    const overlay = document.getElementById('contentOverlay');
-    if (overlay) {
-      overlay.style.opacity = '0';
-      setTimeout(() => {
-        overlay.style.display = 'none';
-        document.getElementById('like-btn')?.removeAttribute('disabled');
-        document.getElementById('dislike-btn')?.removeAttribute('disabled');
-      }, 500);
-    }
-
-    // You may also want to trigger `searchNearbyRestaurants({ lat, lng })`
-    // or rely on the backend's `start-swiping` event
-    sessionStorage.removeItem('invitePayload');
-  }
-// Check Redis for already-accepted status (in case we missed the event)
-fetch(`/session/status?groupId=${groupId}`)
-  .then(res => res.json())
-  .then(data => {
-    if (data.accepted) {
-      console.log('✅ Friend already accepted invite before page load — restoring session UI');
-      const overlay = document.getElementById('contentOverlay');
-      if (overlay) {
-        overlay.style.opacity = '0';
-        setTimeout(() => {
-          overlay.style.display = 'none';
-          document.getElementById('like-btn')?.removeAttribute('disabled');
-          document.getElementById('dislike-btn')?.removeAttribute('disabled');
-        }, 500);
-      }
-
-      document.getElementById('waitingOverlay')?.classList.add('d-none');
-    }
-  })
-  .catch(err => {
-    console.warn('⚠️ Failed to check session acceptance status:', err);
-  });
-
-});
-
-
-
-     const socket = io();
-
-  document.addEventListener('DOMContentLoaded', () => {
-console.log('🚀 DOM loaded and JS running');
-
-     console.log('✅ Socket initialized:', socket);
-
-  const userId = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
-
-    console.log('Loaded userId from template:', userId);
-document.addEventListener('click', (e) => {
-  if (e.target && e.target.id === 'cancelInviteBtn') {
-    console.log('🛑 Cancel Invite triggered via delegation');
-    const invitePayload = sessionStorage.getItem('invitePayload');
-let groupId = null;
-try {
-  const raw = sessionStorage.getItem('invitePayload');
-  if (raw) groupId = JSON.parse(raw).groupId;
-} catch (e) {
-  console.error('❌ Failed to parse groupId from sessionStorage');
-}
-
-    const userId = {{user.user_id}};
-
-    if (groupId && userId) {
-      socket.emit('cancel-swipe-session', { groupId, userId });
-    }
-
-    document.getElementById('waitingOverlay')?.classList.add('d-none');
-    window.location.href = '/home';
-  }
-});
-
-    let groupId = null;
-const invitePayload = sessionStorage.getItem('invitePayload');
-if (invitePayload) {
-  try {
-    const { groupId, lat, lng, types } = JSON.parse(invitePayload);
-    console.log('📦 Loaded stored invite payload:', groupId, lat, lng, types);
-
-    // Store temporarily until map is ready
-    window._pendingInvitePayload = { groupId, lat, lng, types };
-
-    // Emit socket events
-    socket.emit('join-session', { groupId, userId });
-    socket.emit('accept-session-invite', { groupId, userId });
-    socket.emit('ready-to-swipe', { groupId, userId, lat, lng, types });
-
-    document.getElementById('waitingOverlay')?.classList.add('d-none');
-    const overlay = document.getElementById('contentOverlay');
-    if (overlay) {
-      overlay.style.opacity = '0';
-      setTimeout(() => {
-        overlay.style.display = 'none';
-        document.getElementById('like-btn')?.removeAttribute('disabled');
-        document.getElementById('dislike-btn')?.removeAttribute('disabled');
-      }, 500);
-    }
-
-    sessionStorage.removeItem('invitePayload');
-  } catch (err) {
-    console.error('❌ Failed to parse invitePayload:', err);
-  }
-}
-
-  
-
-
-socket.on('connect', () => {
-  console.log('✅ Connected, socket id:', socket.id);
-socket.emit('register-user', { userId }, () => {
-  console.log('✅ Re-registered user after reconnect:', userId);
-
-  if (window._pendingInvitePayload) {
-    const { groupId, lat, lng, types } = window._pendingInvitePayload;
-    socket.emit('ready-to-swipe', { groupId, userId, lat, lng, types });
-  }
-});
-
-socket.on('friend-accepted-invite', () => {
-  console.log('🎯 friend-accepted-invite received on frontend');
-
+function enableSwipingUI() {
   const overlay = document.getElementById('contentOverlay');
+  document.getElementById('waitingOverlay')?.classList.add('d-none');
   if (overlay) {
     overlay.style.opacity = '0';
     setTimeout(() => {
@@ -400,181 +274,269 @@ socket.on('friend-accepted-invite', () => {
       document.getElementById('dislike-btn')?.removeAttribute('disabled');
     }, 500);
   }
+}
 
-  document.getElementById('waitingOverlay')?.classList.add('d-none');
-});
-});
-
-    console.log('✅ Registered user', userId);
-
-console.log('📡 Setting up invite listener'); // A — you’re attaching the listener
-
-let sessionLat = null;
-let sessionLng = null;
-let sessionTypes = [];
-
-socket.on('invite-user-to-session', ({ groupId, lat, lng, types }) => {
-  console.log('🔥 invite-user-to-session event received');
-  console.log('🔔 About to show the invite modal for group:', groupId);
-  sessionLat = lat;
-  sessionLng = lng;
-  sessionTypes = types || [];
-  const inviteModalEl = document.getElementById('inviteModal');
-  const joinBtn = document.getElementById('joinSwipeBtn');
-
-  if (!inviteModalEl || !joinBtn) {
-    console.error('❌ Modal or button missing');
-    return;
+function showWaitingOverlay() {
+  const overlay = document.getElementById('contentOverlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    overlay.style.opacity = '0.7';
   }
+  document.getElementById('waitingOverlay')?.classList.remove('d-none');
+  document.getElementById('like-btn')?.setAttribute('disabled', 'true');
+  document.getElementById('dislike-btn')?.setAttribute('disabled', 'true');
+}
 
-  const modal = bootstrap.Modal.getOrCreateInstance(inviteModalEl);
-  modal.show();
-  console.log('✅ Modal.show() called');
+function disableSwipingUI() {
+  document.getElementById('like-btn')?.setAttribute('disabled', 'true');
+  document.getElementById('dislike-btn')?.setAttribute('disabled', 'true');
+  const overlay = document.getElementById('contentOverlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    overlay.style.opacity = '0.7';
+  }
+  document.getElementById('waitingOverlay')?.classList.remove('d-none');
+}
 
-joinBtn.onclick = () => {
-  console.log('📬 Accepting invite for group', groupId);
+async function restoreSwipingSession() {
+  const redirected = sessionStorage.getItem('redirectedFromInvite');
+  const payloadRaw = sessionStorage.getItem('invitePayload');
 
-  // Emit all session events BEFORE redirect
-  socket.emit('join-session', { groupId, userId });
-  socket.emit('accept-session-invite', { groupId, userId });
-  socket.emit('ready-to-swipe', {
-    groupId,
-    userId,
-    lat: sessionLat,
-    lng: sessionLng,
-    types: sessionTypes
-  });
+  if (redirected !== 'accepted' || !payloadRaw) return;
 
-  // Optional: store in sessionStorage to resume UI on next page
-  sessionStorage.setItem('invitePayload', JSON.stringify({
-    groupId,
-    lat: sessionLat,
-    lng: sessionLng,
-    types: sessionTypes
-  }));
+  // 💥 Clear immediately to prevent repeat even if restore fails
+  sessionStorage.removeItem('redirectedFromInvite');
+  sessionStorage.removeItem('invitePayload');
 
-  // Clean up modal
-  modal.hide();
-  document.body.classList.remove('modal-open');
-  document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+  try {
+    const { groupId, lat, lng, types } = JSON.parse(payloadRaw);
 
-  // 🔁 Redirect to /home
-  window.location.href = '/home';
+    const res = await fetch(`/session/status?groupId=${groupId}`);
+    const data = await res.json();
+
+    if (data.cancelled) {
+      console.log('🚫 Session was cancelled — skipping swiping UI');
+      return;
+    }
+
+    console.log('🔁 Restoring swipe session:', groupId);
+
+    socket.emit('join-session', { groupId, userId: USER_ID });
+    socket.emit('accept-session-invite', { groupId, userId: USER_ID });
+    socket.emit('ready-to-swipe', { groupId, userId: USER_ID, lat, lng, types });
+
+    enableSwipingUI();
+    searchNearbyRestaurants({ lat: parseFloat(lat), lng: parseFloat(lng) });
+
+  } catch (err) {
+    console.error('❌ Failed to restore session:', err);
+  }
+}
+
+
+let inviteState = {
+  groupId: null,
+  lat: null,
+  lng: null,
+  types: [],
+  isSender: false
 };
 
-});
-    // START SESSION
-    document.getElementById('startSessionBtn')?.addEventListener('click', async () => {
+
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const redirectFlag = sessionStorage.getItem('redirectedFromInvite');
+  if (redirectFlag !== 'accepted') {
+    sessionStorage.removeItem('invitePayload'); // only clear if not restoring
+  }
+
+ 
+  inviteState = {
+    groupId: null,
+    lat: null,
+    lng: null,
+    types: [],
+    isSender: false
+  };
+const cancelBtn = document.getElementById('cancelInviteBtn');
+if (cancelBtn) {
+  cancelBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const groupId = inviteState.groupId;
+    if (groupId && USER_ID) {
+      socket.emit('cancel-swipe-session', { groupId, userId: USER_ID });
+    }
+
+    // 💥 Fully clear session data
+    sessionStorage.clear(); // ← clears all keys including invitePayload, redirectedFromInvite, etc.
+
+    // 💥 Reset internal invite state
+    inviteState = {
+      groupId: null,
+      lat: null,
+      lng: null,
+      types: [],
+      isSender: false
+    };
+
+    // 💥 Hide invite modal if present
+    const modalEl = document.getElementById('inviteModal');
+    if (modalEl) {
+      const modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.hide();
+    }
+
+    document.body.classList.remove('modal-open');
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+
+    // 💥 Hide swiping overlays
+    document.getElementById('waitingOverlay')?.classList.add('d-none');
+    const overlay = document.getElementById('contentOverlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+      overlay.style.opacity = '0';
+    }
+
+    // 💥 Redirect home
+    setTimeout(() => {
+      window.location.href = '/home';
+    }, 300);
+  });
+}
+
+
+  const inviteBtn = document.getElementById('startSessionBtn');
+  if (inviteBtn) {
+    inviteBtn.addEventListener('click', async () => {
+      showWaitingOverlay();
+
       const groupName = document.getElementById('groupName')?.value || 'Session';
       const location = document.getElementById('location')?.value;
       const friendUsername = document.getElementById('friendUsername')?.value;
+      const selectedTypes = Array.from(document.querySelectorAll('.form-check-input:checked'))
+        .map(cb => cb.value)
+        .filter(v => v !== 'on');
 
-      if (!location) {
-        alert('Please enter a location');
-        return;
-      }
-
-      try {
-        // Geocode the location first
-        const geoResults = await new Promise((resolve, reject) => {
-          geocoder.geocode({ address: location }, (results, status) => {
-            if (status === 'OK') resolve(results);
-            else reject(status);
-          });
+      const geoResults = await new Promise((resolve, reject) => {
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address: location }, (results, status) => {
+          if (status === 'OK') resolve(results);
+          else reject(status);
         });
+      });
 
-        const geocodedLat = geoResults[0].geometry.location.lat();
-        const geocodedLng = geoResults[0].geometry.location.lng();
-        console.log('Geocoded coordinates:', geocodedLat, geocodedLng);
+      const geocodedLat = geoResults[0].geometry.location.lat();
+      const geocodedLng = geoResults[0].geometry.location.lng();
 
-        const res = await fetch('/groups', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: groupName,
-            location: location,
-            lat: geocodedLat,
-            lng: geocodedLng
-          })
+      const res = await fetch('/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: groupName, location, lat: geocodedLat, lng: geocodedLng })
+      });
+
+      const data = await res.json();
+      if (!data.success) return alert('Group creation failed');
+
+      const groupId = data.group_id;
+      GROUP_ID = groupId;
+      inviteState = { groupId, lat: geocodedLat, lng: geocodedLng, types: selectedTypes, isSender: true };
+      sessionStorage.setItem('invitePayload', JSON.stringify(inviteState));
+
+      socket.emit('join-session', { groupId, userId: USER_ID });
+
+      if (friendUsername) {
+        socket.emit('invite-user-by-username', {
+          username: friendUsername,
+          groupId,
+          lat: geocodedLat,
+          lng: geocodedLng,
+          types: selectedTypes
         });
-
-        if (!res.ok) {
-          const text = await res.text();
-          console.error('❌ Server returned error:', res.status, text);
-          alert('Failed to start session');
-          return;
-        }
-
-        const data = await res.json();
-        if (!data.success) {
-          alert('Failed to start session');
-          return;
-        }
-
-        groupId = data.group_id;
-        console.log('✅ Group created with ID:', groupId);
-
-        // Join own group room
-        socket.emit('join-session', { groupId, userId });
-
-
-
-        // Send invite to friend
-if (friendUsername) {
-  const selectedTypes = Array.from(document.querySelectorAll('.form-check-input:checked'))
-    .map(cb => cb.value)
-    .filter(v => v !== 'on');
-
-  setTimeout(() => {
-    socket.emit('invite-user-by-username', {
-      username: friendUsername,
-      groupId,
-      lat: geocodedLat,
-      lng: geocodedLng,
-      types: selectedTypes
-    });
-
-    // ✅ Sender marks themselves as ready right after sending the invite
-
-  }, 1000);
-}
-
-
-        // Show waiting UI
-        document.getElementById('waitingOverlay')?.classList.remove('d-none');
-
-      } catch (err) {
-        console.error('❌ Geocoding or session start error:', err);
-        alert('Failed to start session');
       }
     });
+  }
+});
 
+socket.on('invite-user-to-session', async ({ groupId, lat, lng, types }) => {
+  const redirected = sessionStorage.getItem('redirectedFromInvite');
 
+  // 🛑 Don't show modal if already accepted
+  if (redirected === 'accepted') return;
 
-    // RECEIVE INVITE
+  try {
+    const res = await fetch(`/session/status?groupId=${groupId}`);
+    const data = await res.json();
+    if (data.cancelled) return;
 
+    sessionStorage.setItem('invitePayload', JSON.stringify({ groupId, lat, lng, types }));
+    sessionStorage.setItem('redirectedFromInvite', 'pending'); // Mark pending only
 
-    // START SWIPING
+    const modalEl = document.getElementById('inviteModal');
+    const joinBtn = document.getElementById('joinSwipeBtn');
+    if (!modalEl || !joinBtn) return;
 
-socket.emit('register-user', { userId }, () => {
-  console.log('🧠 Confirmed user registered on server');
-  socket.emit('ready-for-invites', { userId });  // <- this is key
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    joinBtn.onclick = () => {
+      // ✅ Set flag before redirecting
+      sessionStorage.setItem('redirectedFromInvite', 'accepted');
+      modal.hide();
+      document.body.classList.remove('modal-open');
+      document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+
+      // ✅ Redirect to restore swiping session
+      window.location.href = '/home';
+    };
+  } catch (err) {
+    console.error('❌ Failed Redis check in invite-user-to-session:', err);
+  }
+});
+
+socket.on('friend-accepted-invite', () => {
+  enableSwipingUI();
+});
+
+socket.on('start-swiping', ({ lat, lng, types }) => {
+  enableSwipingUI();
+});
+
+socket.on('swipe-session-cancelled', ({ groupId }) => {
+  console.log('❌ Session was cancelled for group:', groupId);
+
+  // Clear invite data
+  sessionStorage.removeItem('invitePayload');
+  sessionStorage.removeItem('redirectedFromInvite');
+
+  inviteState = {
+    groupId: null,
+    lat: null,
+    lng: null,
+    types: [],
+    isSender: false
+  };
+
+  // Hide invite modal
+  const modalEl = document.getElementById('inviteModal');
+  if (modalEl) {
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
+  }
+  const modalE = document.getElementById('waitingOverlay');
+  if (modalE) {
+    const modal = bootstrap.Modal.getInstance(modalE);
+    modal.hide();
+  }
+ 
+sessionStorage.setItem('redirectedFromInvite', 'cancelled');
+
+  disableSwipingUI();
 });
 
 
-  });
 
-// 🔁 Check if there's a pending invite stored in sessionStorage
-const storedInvite = sessionStorage.getItem('invitePayload');
-if (storedInvite) {
-  try {
-    const parsed = JSON.parse(storedInvite);
-    window._pendingInvitePayload = parsed;  // Delay full session logic
-    sessionStorage.removeItem('invitePayload');
-  } catch (err) {
-    console.error('❌ Failed to parse invitePayload:', err);
-  }
-}
 
 
 
@@ -592,7 +554,7 @@ if (storedInvite) {
     let autocompleteService;
     let mapDiv;
 
-    function initMap() {
+    async function initMap() {
         console.log("Google Maps API loaded successfully");
         
         // Initialize Google Maps services
@@ -1088,24 +1050,77 @@ socket.on('start-swiping', ({ lat, lng, types }) => {
   likeBtn.removeAttribute('disabled');
   dislikeBtn.removeAttribute('disabled');
 });
+
+// ✅ Insert this block before you use window._pendingInvitePayload
+if (window._pendingInvitePayload) {
+  const { groupId } = window._pendingInvitePayload;
+
+  // ✅ New cancel check via Redis before loading anything
+  fetch(`/session/status?groupId=${groupId}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.cancelled) {
+        console.log('🚫 Redis says group was cancelled — skipping UI restoration');
+        delete window._pendingInvitePayload;
+        sessionStorage.removeItem('invitePayload');
+        return;
+      }
+
+      // 🟢 Safe to resume session
+      const { lat, lng, types } = window._pendingInvitePayload;
+      console.log('📍 Resuming session with:', groupId, lat, lng, types);
+      searchNearbyRestaurants({ lat: parseFloat(lat), lng: parseFloat(lng) });
+
+      const overlay = document.getElementById('contentOverlay');
+      if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+          overlay.style.display = 'none';
+          document.getElementById('like-btn')?.removeAttribute('disabled');
+          document.getElementById('dislike-btn')?.removeAttribute('disabled');
+        }, 500);
+      }
+
+      delete window._pendingInvitePayload;
+    })
+    .catch(err => {
+      console.warn('⚠️ Failed to check cancel status from Redis:', err);
+    });
+}
 // If we have an invitePayload waiting, now it's safe to load restaurants
 if (window._pendingInvitePayload) {
   const { groupId, lat, lng, types } = window._pendingInvitePayload;
 
-  console.log('📍 Resuming session in initMap with:', groupId, lat, lng, types);
-  searchNearbyRestaurants({ lat: parseFloat(lat), lng: parseFloat(lng) });
+  try {
+    const res = await fetch(`/session/status?groupId=${groupId}`);
+    const data = await res.json();
 
-  // Remove overlay, enable buttons
-  contentOverlay.style.opacity = '0';
-  setTimeout(() => {
-    contentOverlay.style.display = 'none';
-    likeBtn.removeAttribute('disabled');
-    dislikeBtn.removeAttribute('disabled');
-  }, 500);
+    if (data.cancelled) {
+      console.log('🚫 Redis confirms cancelled during pending restore:', groupId);
+      delete window._pendingInvitePayload;
+      sessionStorage.removeItem('invitePayload');
+      return;
+    }
+
+    console.log('📍 Resuming session in initMap with:', groupId, lat, lng, types);
+    searchNearbyRestaurants({ lat: parseFloat(lat), lng: parseFloat(lng) });
+
+    const overlay = document.getElementById('contentOverlay');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        document.getElementById('like-btn')?.removeAttribute('disabled');
+        document.getElementById('dislike-btn')?.removeAttribute('disabled');
+      }, 500);
+    }
+  } catch (err) {
+    console.warn('⚠️ Redis check failed in initMap — being safe and aborting:', err);
+  }
 
   delete window._pendingInvitePayload;
 }
-    }
+}
     // If the API has already loaded, initialize the map
     if (window.google && window.google.maps) {
         console.log("Google Maps already loaded, initializing map");
@@ -1114,28 +1129,14 @@ if (window._pendingInvitePayload) {
   
 window.initMap = initMap;
  
-
-socket.on('swipe-session-cancelled', () => {
-  console.log('❌ Received swipe-session-cancelled event');
-
-  // Close the invite modal if it's still open
-  const inviteModal = bootstrap.Modal.getInstance(document.getElementById('inviteModal'));
-  if (inviteModal) {
-    inviteModal.hide();
-  }
-
-  // Hide the waiting overlay
-  document.getElementById('waitingOverlay')?.classList.add('d-none');
-
-  // Clear invitePayload from sessionStorage
-  sessionStorage.removeItem('invitePayload');
-
-  // Optionally show alert or toast
-  alert('This swipe session was cancelled by your friend.');
-
-  // Reset UI by redirecting or reloading home
-  window.location.href = '/home';
+socket.on('connect', () => {
+  socket.emit('register-user', { userId: USER_ID });
+  socket.emit('ready-for-invites', { userId: USER_ID });
+  restoreSwipingSession();
 });
+
+
+
 
 </script>
 
