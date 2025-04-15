@@ -616,13 +616,13 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
 
        
 
-        function searchNearbyRestaurants(location) {
+        function searchNearbyRestaurants(location, radius) {
             console.log('Starting restaurant search at location:', location);
             
             const request = {
-                location: location,
-                radius: 5000,
-                type: 'restaurant'
+                location : location,
+                radius   : radius || 5000,
+                type     : 'restaurant'
             };
             
             // Define valid restaurant types
@@ -809,21 +809,21 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
             }
         }
 
-        likeBtn.addEventListener('click', function () {
+          likeBtn.addEventListener('click', function () {
             restaurantCard.classList.add('swipe-right');
             setTimeout(() => {
-                restaurantCard.classList.remove('swipe-right');
-                handleVote(true);
+              restaurantCard.classList.remove('swipe-right');
+              handleVote(true);
             }, 500);
-        });
+          });
 
-        dislikeBtn.addEventListener('click', function () {
+          dislikeBtn.addEventListener('click', function () {
             restaurantCard.classList.add('swipe-left');
             setTimeout(() => {
-                restaurantCard.classList.remove('swipe-left');
-                handleVote(false);
+              restaurantCard.classList.remove('swipe-left');
+              handleVote(false);
             }, 500);
-        });
+          });
 
         // Add keyboard controls
         document.addEventListener('keydown', function(e) {
@@ -853,11 +853,15 @@ socket.on('start-swiping', ({ groupId, lat, lng, types }) => {
 
   if (lat && lng) {
     console.log('📍 Fetching restaurants as receiver...');
-    searchNearbyRestaurants({ lat: parseFloat(lat), lng: parseFloat(lng) });
+    searchNearbyRestaurants({ lat: parseFloat(lat), lng: parseFloat(lng) }, 5000);
   }
 
   likeBtn.removeAttribute('disabled');
   dislikeBtn.removeAttribute('disabled');
+
+  sessionStorage.setItem('lat', lat);
+  sessionStorage.setItem('lng', lng);
+  sessionStorage.setItem('radius', 5000);
 });
 
 socket.on('peer-swipe', ({ userId, restaurantId, direction }) => {
@@ -914,7 +918,15 @@ function handleVote(liked) {
   if (currentIndex < currentRestaurants.length) {
     showNextRestaurant();
   } else {
-    alert('No more restaurants to show!');
+    // Search for more restaurants with a wider radius
+    let radius = parseInt(sessionStorage.getItem('radius'));
+    radius += (radius / 2);
+    sessionStorage.setItem('radius', radius);
+
+    searchNearbyRestaurants({
+      lat : parseFloat(sessionStorage.getItem('lat')),
+      lng : parseFloat(sessionStorage.getItem('lng'))
+    }, radius);
   }
 }
 
