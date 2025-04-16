@@ -139,8 +139,9 @@ CREATE TABLE IF NOT EXISTS Swipes (
     FOREIGN KEY (group_id) REFERENCES Groups(group_id),
     FOREIGN KEY (user_id) REFERENCES Users(user_id),
     FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id),
-    UNIQUE (group_id, user_id, restaurant_id) -- ✅ Required for ON CONFLICT
+    UNIQUE (group_id, user_id, restaurant_id)  -- ✅ This is what you need
 );
+
 
 COMMENT ON TABLE Swipes IS 'Records user swipes on restaurants within a group.';
 COMMENT ON COLUMN Swipes.swipe_id IS 'Unique identifier for each swipe.';
