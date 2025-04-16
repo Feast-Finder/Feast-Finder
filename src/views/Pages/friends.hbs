@@ -1,308 +1,508 @@
 {{#> layout name="main" }}
+<style>
+  .list-group-item:hover {
+    background-color: #f8f9fa;
+    cursor: pointer;
+  }
+
+  .center-avatar-img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+  }
+</style>
 <div class="container pt-4">
-    <h2 class="mb-4">Friends</h2>
+  <h2 class="mb-4">Friends</h2>
 
-    {{#if error}}
-    <div class="alert alert-danger">{{error}}</div>
-    {{/if}}
+  {{#if error}}
+  <div class="alert alert-danger">{{error}}</div>
+  {{/if}}
 
-    {{#if success}}
-    <div class="alert alert-success">{{success}}</div>
-    {{/if}}
+  {{#if success}}
+  <div class="alert alert-success">{{success}}</div>
+  {{/if}}
 
-    <div class="row">
-        <!-- Current Friends -->
-        <div class="c mb-4">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">Your Friends</h5>
-                </div>
-                <div class="card-body">
-                    {{#if friends.length}}
-                    <ul class="list-group" id="friendsList">
-                        {{#each friends}}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <a href="#" class="fw-bold text-dark text-decoration-none view-profile"
-                                data-user-id="{{this.user_id}}" data-username="{{this.username}}">
-                                {{this.username}}
-                                {{#if this.active}}
-                                <span class="badge bg-success ms-2">Active</span>
-                                {{else}}
-                                <span class="badge bg-secondary ms-2">Inactive</span>
-                                {{/if}}
-                            </a>
-                            <button class="btn btn-sm btn-danger remove-friend" data-user-id="{{this.user_id}}">
-                                Remove
-                            </button>
-                        </li>
-                        {{/each}}
-                    </ul>
-                    {{else}}
-                    <p class="text-muted" id="noFriendsMessage">You don't have any friends yet. Send a friend request to get started!</p>
-                    <ul class="list-group d-none" id="friendsList"></ul> <!-- hidden placeholder to show later -->
-                    {{/if}}
-                </div>
-            </div>
+  <div class="row">
+
+    <!-- Current Friends -->
+    <div class="c mb-4">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h5 class="card-title mb-0">Your Friends</h5>
         </div>
+        <div class="card-body">
+          {{#if friends.length}}
+          <ul class="list-group" id="friendsList" style="max-height: 300px; overflow-y: auto;">
 
-        <!-- Add New Friends -->
-        <div class="mb-4 position-relative">
-            <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h5 class="card-title mb-0">Add Friends</h5>
+            {{#each friends}}
+            <li class="list-group-item d-flex justify-content-between align-items-center"
+              data-active="{{#if this.active}}1{{else}}0{{/if}}">
+
+              <div class="d-flex align-items-center">
+                {{#if this.profile_picture_url.length}}
+                <img src="{{this.profile_picture_url}}" alt="{{this.username}}'s avatar"
+                  class="rounded-circle me-2 flex-shrink-0" style="width: 40px; height: 40px; object-fit: cover;">
+                {{else}}
+                <div
+                  class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center me-2 flex-shrink-0"
+                  style="width: 40px; height: 40px; font-weight: bold;">
+                  {{this.username.[0]}}
                 </div>
-                <div class="card-body">
-                    <input type="text" class="form-control" id="friendSearch"
-                        placeholder="Search for friends by username" autocomplete="off" />
-                    <ul class="list-group position-absolute w-100 mt-1" id="searchResults" style="z-index: 1000">
-                    </ul>
-                </div>
-            </div>
-        </div>
+                {{/if}}
 
-        <!-- Past Sessions -->
-        <div class="card shadow">
-            <div class="card-header bg-secondary text-white">
-                <h3 class="mb-0">Recent Sessions</h3>
-            </div>
-            <div class="card-body">
-                <div class="list-group">
-                    <a href="#" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1">Session with JaneSmith, MikeJohnson</h5>
-                            <small class="text-muted">2 days ago</small>
-                        </div>
-                        <p class="mb-1">Matched on: Italian Restaurant</p>
-                    </a>
+                <a href="#" class="fw-bold text-dark text-decoration-none view-profile" data-user-id="{{this.user_id}}"
+                  data-username="{{this.username}}">
+                  {{this.username}}
+                  <span class="ms-2" title="{{#if this.active}}Active{{else}}Inactive{{/if}}">
+                    <span class="d-inline-block rounded-circle {{#if this.active}}bg-success{{else}}bg-secondary{{/if}}"
+                      style="width: 10px; height: 10px;"></span>
+                  </span>
 
-                    <a href="#" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1">Session with MikeJohnson</h5>
-                            <small class="text-muted">1 week ago</small>
-                        </div>
-                        <p class="mb-1">Matched on: Mexican Food Truck</p>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Friend Profile Modal -->
-        <div class="modal fade" id="friendProfileModal" tabindex="-1" aria-labelledby="friendModalLabel"
-            aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="friendModalLabel">Friend Profile</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p><strong>Username:</strong> <span id="modalUsername"></span></p>
-                        <p><strong>Email:</strong> <span id="modalEmail"></span></p>
-                        <p><strong>Joined:</strong> <span id="modalJoined"></span></p>
-                        <p><strong>Last Active:</strong> <span id="modalLastActive"></span></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const searchInput = document.getElementById('friendSearch');
-    const resultsBox = document.getElementById('searchResults');
-    const friendsList = document.getElementById('friendsList');
-    const noFriendsMessage = document.getElementById('noFriendsMessage');
-
-    function attachRemoveFriend(button) {
-      if (!button) return;
-      button.addEventListener('click', async function () {
-        const userId = this.dataset.userId;
-        const confirmed = confirm('Are you sure you want to remove this friend?');
-        if (!confirmed) return;
-
-        try {
-          const res = await fetch('/friends/remove', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ friend_id: userId })
-          });
-
-          const result = await res.json();
-          if (result.success) {
-            this.closest('li').remove();
-          } else {
-            alert(result.error || 'Failed to remove friend.');
-          }
-        } catch (err) {
-          console.error('Error removing friend:', err);
-          alert('Server error');
-        }
-      });
-    }
-
-    function attachProfileModalHandlers() {
-      document.querySelectorAll('.view-profile').forEach(link => {
-        link.onclick = null;
-        link.addEventListener('click', async (e) => {
-          e.preventDefault();
-          const userId = link.dataset.userId;
-
-          try {
-            const res = await fetch(`/users/${userId}`);
-            const user = await res.json();
-
-            document.getElementById('modalUsername').textContent = user.username;
-            document.getElementById('modalEmail').textContent = user.email || 'N/A';
-            document.getElementById('modalJoined').textContent = new Date(user.created_at).toLocaleDateString();
-
-            const lastActive = user.active
-              ? 'Currently Active'
-              : (user.last_active_at ? new Date(user.last_active_at).toLocaleString() : 'Unknown');
-
-            document.getElementById('modalLastActive').textContent = lastActive;
-
-            const modalElement = document.getElementById('friendProfileModal');
-            const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
-            modal.show();
-
-          } catch (err) {
-            console.error('Error fetching profile:', err);
-            alert('Could not load profile.');
-          }
-        });
-      });
-
-      // Clean up stuck backdrops if needed
-      const modalElement = document.getElementById('friendProfileModal');
-      modalElement.addEventListener('hidden.bs.modal', () => {
-        document.body.classList.remove('modal-open');
-        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-      });
-    }
-
-    // Initial handler setup
-    document.querySelectorAll('.remove-friend').forEach(attachRemoveFriend);
-    attachProfileModalHandlers();
-
-    searchInput.addEventListener('input', async () => {
-      const query = searchInput.value.trim();
-      if (!query) {
-        resultsBox.innerHTML = '';
-        return;
-      }
-
-      try {
-        const res = await fetch(`/search-users?q=${encodeURIComponent(query)}`);
-        const users = await res.json();
-
-        resultsBox.innerHTML = '';
-
-        if (users.length === 0) {
-          const li = document.createElement('li');
-          li.className = 'list-group-item text-muted';
-          li.textContent = 'No users found';
-          resultsBox.appendChild(li);
-          return;
-        }
-
-        users.forEach(user => {
-          const li = document.createElement('li');
-          li.className = 'list-group-item d-flex justify-content-between align-items-center';
-          li.innerHTML = `
-            <form class="d-flex justify-content-between align-items-center w-100">
-              <input type="hidden" name="friend_id" value="${user.user_id}" />
-              <span class="me-auto">
-                <a href="#" class="view-profile fw-bold text-dark text-decoration-none"
-                   data-user-id="${user.user_id}" data-username="${user.username}">
-                  ${user.username}
                 </a>
-                ${user.active 
-                  ? '<span class="badge bg-success ms-2">Active</span>' 
-                  : '<span class="badge bg-secondary ms-2">Inactive</span>'}
-              </span>
-              ${user.is_friend 
-                ? '<button type="button" class="btn btn-sm btn-outline-secondary ms-2" disabled>Already Friends</button>' 
-                : '<button type="button" class="btn btn-sm btn-outline-primary ms-2 add-friend-btn">Add Friend</button>'}
-            </form>
-          `;
+              </div>
 
-          const addButton = li.querySelector('.add-friend-btn');
-          if (addButton) {
-            addButton.addEventListener('click', async () => {
-              addButton.disabled = true;
-              addButton.textContent = 'Adding...';
+              <button class="btn btn-sm btn-danger remove-friend" data-user-id="{{this.user_id}}">
+                Remove
+              </button>
+            </li>
+            {{/each}}
+
+          </ul>
+          {{else}}
+          <p class="text-muted" id="noFriendsMessage">You don't have any friends yet. Send a friend request to get
+            started!</p>
+          <ul class="list-group" id="friendsList" style="max-height: 300px; overflow-y: auto;">
+
+            {{/if}}
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Add New Friends -->
+    <div class="mb-4 position-relative">
+      <div class="card shadow">
+        <div class="card-header bg-success text-white">
+          <h5 class="card-title mb-0">Add Friends</h5>
+        </div>
+        <div class="card-body">
+          <input type="text" class="form-control" id="friendSearch"
+            placeholder="Search for friends by username, email, or phone number" autocomplete="off" />
+          <ul class="list-group position-absolute w-100 mt-1" id="searchResults"
+            style="z-index: 1000; max-height: 300px; overflow-y: auto;">
+
+          </ul>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Recent Sessions -->
+    <div class="mb-4 position-relative">
+      <div class="card shadow">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="card-title mb-0">Recent Sessions</h5>
+        </div>
+        <div class="card-body">
+          {{#if matches.length}}
+          <div class="list-group">
+            {{#each matches}}
+            <a href="#" class="list-group-item list-group-item-action">
+              <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">Session with {{this.matched_with}}</h5>
+                <small class="text-muted">{{this.matched_at}}</small>
+              </div>
+              <p class="mb-1">Matched on: {{this.restaurant_name}}</p>
+              {{#if this.group_name}}
+              <small class="text-muted">Group: {{this.group_name}}</small>
+              {{/if}}
+            </a>
+            {{/each}}
+          </div>
+          {{else}}
+          <div class="text-center">
+            <p class="text-muted mb-3">No recent sessions</p>
+            <a href="/home" class="btn btn-primary rounded-pill px-4">Start Matching Now</a>
+          </div>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Friend Profile Modal -->
+    <div class="modal fade" id="friendProfileModal" tabindex="-1" aria-labelledby="friendModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="friendModalLabel">Friend Profile</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <!-- Avatar -->
+            <div id="modalAvatarWrapper" class="d-flex justify-content-center mb-3">
+              <div id="modalAvatarContainer"
+                class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center"
+                style="width: 80px; height: 80px; font-size: 2rem; font-weight: bold;">
+              </div>
+            </div>
+
+
+            <p><strong>Username:</strong> <span id="modalUsername"></span></p>
+            <p><strong>Mutual Friends:</strong> <span id="modalMutualFriends">-</span></p>
+            <p><strong>Preferences:</strong></p>
+            <ul class="list-unstyled text-start ps-3">
+              <li><strong>Cuisines:</strong> <span id="modalCuisines">-</span></li>
+              <li><strong>Dietary:</strong> <span id="modalDietary">-</span></li>
+              <li><strong>Price Range:</strong> <span id="modalPriceRange">-</span></li>
+            </ul>
+
+            <p><strong>Last Active:</strong> <span id="modalLastActive"></span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invitation Modal -->
+    <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="inviteModalLabel">Swipe Session Invite</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            A friend invited you to join a swiping session.
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="joinSwipeBtn">Join Swiping</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('friendSearch');
+        const resultsBox = document.getElementById('searchResults');
+        const friendsList = document.getElementById('friendsList');
+        const noFriendsMessage = document.getElementById('noFriendsMessage');
+
+        function attachRemoveFriend(button) {
+          if (!button) return;
+          button.addEventListener('click', async function () {
+            const userId = this.dataset.userId;
+            const confirmed = confirm('Are you sure you want to remove this friend?');
+            if (!confirmed) return;
+
+            try {
+              const res = await fetch('/friends/remove', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ friend_id: userId })
+              });
+
+              const result = await res.json();
+              if (result.success) {
+                this.closest('li').remove();
+              } else {
+                alert(result.error || 'Failed to remove friend.');
+              }
+            } catch (err) {
+              console.error('Error removing friend:', err);
+              alert('Server error');
+            }
+          });
+        }
+
+        function attachProfileModalHandlers() {
+          document.querySelectorAll('.view-profile').forEach(link => {
+            link.onclick = null;
+            link.addEventListener('click', async (e) => {
+              e.preventDefault();
+              const userId = link.dataset.userId;
 
               try {
-                const res = await fetch('/send-friend-request', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ friend_id: user.user_id })
-                });
+                const res = await fetch(`/users/${userId}`);
+                const user = await res.json();
 
-                if (res.ok) {
-                  li.remove();
-                  noFriendsMessage?.remove();
-                  friendsList.classList.remove('d-none'); // make list visible
+                const username = user.username || '';
+                const avatarContainer = document.getElementById('modalAvatarContainer');
 
-                  const newFriend = document.createElement('li');
-                  newFriend.className = 'list-group-item d-flex justify-content-between align-items-center';
-                  newFriend.innerHTML = `
-                    <a href="#" class="fw-bold text-dark text-decoration-none view-profile"
-                       data-user-id="${user.user_id}" data-username="${user.username}">
-                      ${user.username}
-                      ${user.active 
-                        ? '<span class="badge bg-success ms-2">Active</span>' 
-                        : '<span class="badge bg-secondary ms-2">Inactive</span>'}
-                    </a>
-                    <button class="btn btn-sm btn-danger remove-friend" data-user-id="${user.user_id}">
-                      Remove
-                    </button>
-                  `;
+                // Clear previous avatar content
+                avatarContainer.innerHTML = '';
 
-                  friendsList.appendChild(newFriend);
-                  attachRemoveFriend(newFriend.querySelector('.remove-friend'));
-                  attachProfileModalHandlers();
+                if (user.profile_picture_url) {
+                  const img = document.createElement('img');
+                  img.src = user.profile_picture_url;
+                  img.alt = `${username}'s avatar`;
+                  img.className = 'rounded-circle center-avatar-img';
+                  img.style.width = '80px';
+                  img.style.height = '80px';
+                  img.style.objectFit = 'cover';
 
-                  const allFriends = Array.from(friendsList.querySelectorAll('li'));
-                  allFriends.sort((a, b) => {
-                    const aActive = a.querySelector('.badge')?.classList.contains('bg-success') ? 1 : 0;
-                    const bActive = b.querySelector('.badge')?.classList.contains('bg-success') ? 1 : 0;
-                    return bActive - aActive;
-                  });
+                  avatarContainer.innerHTML = '';
+                  avatarContainer.className = 'mb-3'; // ✅ Clear previous layout styles
 
-                  friendsList.innerHTML = '';
-                  allFriends.forEach(li => friendsList.appendChild(li));
-
-                  searchInput.dispatchEvent(new Event('input'));
-                } else {
-                  addButton.textContent = 'Error';
-                  addButton.classList.replace('btn-outline-primary', 'btn-danger');
+                  avatarContainer.appendChild(img);
                 }
+                else {
+                  avatarContainer.textContent = username[0]?.toLowerCase() || '';
+                  avatarContainer.className = 'mx-auto mb-3 rounded-circle bg-primary text-white d-flex justify-content-center align-items-center';
+                  avatarContainer.style.width = '80px';
+                  avatarContainer.style.height = '80px';
+                  avatarContainer.style.fontSize = '2rem';
+                  avatarContainer.style.fontWeight = 'bold';
+                }
+
+                // Fill in modal details
+                document.getElementById('modalUsername').textContent = username;
+                document.getElementById('modalCuisines').textContent = (user.cuisines || []).join(', ') || 'None';
+                document.getElementById('modalDietary').textContent = (user.dietary || []).join(', ') || 'None';
+                document.getElementById('modalPriceRange').textContent = user.price_range || 'Not specified';
+                document.getElementById('modalMutualFriends').textContent =
+                  typeof user.mutual_friends_count === 'number'
+                    ? `${user.mutual_friends_count} mutual friend${user.mutual_friends_count !== 1 ? 's' : ''}`
+                    : 'none';
+
+                // Format last active
+                const lastActiveSpan = document.getElementById('modalLastActive');
+                if (user.active) {
+                  lastActiveSpan.textContent = 'Currently Active';
+                } else if (user.last_active_at) {
+                  const last = new Date(user.last_active_at);
+                  const now = new Date();
+                  const diffMs = now - last;
+                  const diffMins = Math.floor(diffMs / 60000);
+                  const diffHrs = Math.floor(diffMins / 60);
+                  const diffDays = Math.floor(diffHrs / 24);
+
+                  if (diffMins < 60) {
+                    lastActiveSpan.textContent = 'Online recently';
+                  } else if (diffHrs < 24) {
+                    lastActiveSpan.textContent = `${diffHrs} hour${diffHrs !== 1 ? 's' : ''} ago`;
+                  } else {
+                    lastActiveSpan.textContent = `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+                  }
+                } else {
+                  lastActiveSpan.textContent = 'Unknown';
+                }
+
+                // Show modal
+                const modalElement = document.getElementById('friendProfileModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+                modal.show();
               } catch (err) {
-                console.error('Add friend error:', err);
-                addButton.textContent = 'Error';
-                addButton.classList.replace('btn-outline-primary', 'btn-danger');
+                console.error('Error fetching profile:', err);
+                alert('Could not load profile.');
               }
             });
+
+          });
+          // Clean up stuck backdrops if needed
+          const modalElement = document.getElementById('friendProfileModal');
+          modalElement.addEventListener('hidden.bs.modal', () => {
+            document.body.classList.remove('modal-open');
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+          });
+        }
+
+        // Initial handler setup
+        document.querySelectorAll('.remove-friend').forEach(attachRemoveFriend);
+        attachProfileModalHandlers();
+
+        searchInput.addEventListener('input', async () => {
+          const query = searchInput.value.trim();
+          if (!query) {
+            resultsBox.innerHTML = '';
+            return;
           }
 
-          resultsBox.appendChild(li);
+          try {
+            const res = await fetch(`/search-users?q=${encodeURIComponent(query)}`);
+            const users = await res.json();
+
+            users.sort((a, b) => {
+              // First: friends go last
+              if (a.is_friend !== b.is_friend) {
+                return a.is_friend - b.is_friend; // false < true → non-friends first
+              }
+
+              // Then: active users first
+              const activeA = a.active ? 1 : 0;
+              const activeB = b.active ? 1 : 0;
+              if (activeB !== activeA) {
+                return activeB - activeA;
+              }
+
+              // Finally: alphabetical
+              return a.username.localeCompare(b.username);
+            });
+
+
+            resultsBox.innerHTML = '';
+
+            if (users.length === 0) {
+              const li = document.createElement('li');
+              li.className = 'list-group-item text-muted';
+              li.textContent = 'No users found';
+              resultsBox.appendChild(li);
+              return;
+            }
+
+            users.forEach(user => {
+              const li = document.createElement('li');
+              li.className = 'list-group-item d-flex justify-content-between align-items-center';
+              li.innerHTML = `
+  <form class="d-flex justify-content-between align-items-center w-100">
+    <input type="hidden" name="friend_id" value="${user.user_id}" />
+    <div class="d-flex align-items-center me-auto">
+      ${user.profile_picture_url
+                  ? `<img src="${user.profile_picture_url}" 
+                 alt="${user.username}'s avatar" 
+                 class="rounded-circle me-3" 
+                 style="width: 40px; height: 40px; object-fit: cover;">`
+                  : `<div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center me-3"
+                  style="width: 40px; height: 40px; font-weight: bold;">
+               ${user.username[0]?.toLowerCase() || '?'}
+             </div>`
+                }
+      <a href="#" class="view-profile fw-bold text-dark text-decoration-none"
+         data-user-id="${user.user_id}" data-username="${user.username}">
+        ${user.username}
+   <span class="ms-2" title="${user.active ? 'Active' : 'Inactive'}">
+  <span class="d-inline-block rounded-circle ${user.active ? 'bg-success' : 'bg-secondary'}"
+        style="width: 10px; height: 10px;"></span>
+</span>
+
+      </a>
+    </div>
+    ${user.is_friend
+                  ? '<button type="button" class="btn btn-sm btn-outline-secondary ms-2" disabled>Friends</button>'
+                  : '<button type="button" class="btn btn-sm btn-primary rounded-pill ms-2 add-friend-btn">Add Friend</button>'
+                }
+  </form>
+`;
+
+
+              const addButton = li.querySelector('.add-friend-btn');
+              if (addButton) {
+                addButton.addEventListener('click', async () => {
+                  addButton.disabled = true;
+                  addButton.textContent = 'Adding...';
+
+                  try {
+                    const res = await fetch('/send-friend-request', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ friend_id: user.user_id })
+                    });
+
+                    if (res.ok) {
+                      li.remove();
+                      noFriendsMessage?.remove();
+                      friendsList.classList.remove('d-none'); // make list visible
+
+                      const newFriend = document.createElement('li');
+                      newFriend.className = 'list-group-item d-flex justify-content-between align-items-center';
+                      newFriend.innerHTML = `
+  <div class="d-flex align-items-center">
+    ${user.profile_picture_url ? `
+      <img src="${user.profile_picture_url}" 
+           alt="${user.username}'s avatar" 
+           class="rounded-circle me-3" 
+           style="width: 40px; height: 40px; object-fit: cover;">
+    ` : `
+      <div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center me-3"
+           style="width: 40px; height: 40px; font-weight: bold;">
+        ${user.username[0].toLowerCase()}
+      </div>
+    `}
+    <a href="#" class="fw-bold text-dark text-decoration-none view-profile"
+       data-user-id="${user.user_id}" data-username="${user.username}">
+      ${user.username}
+      ${user.active
+                          ? '<span class="badge bg-success ms-2">Active</span>'
+                          : '<span class="badge bg-secondary ms-2">Inactive</span>'}
+    </a>
+  </div>
+  <button class="btn btn-sm btn-danger remove-friend" data-user-id="${user.user_id}">
+    Remove
+  </button>
+`;
+
+
+                      friendsList.appendChild(newFriend);
+                      attachRemoveFriend(newFriend.querySelector('.remove-friend'));
+                      attachProfileModalHandlers();
+
+                      const allFriends = Array.from(friendsList.querySelectorAll('li'));
+                      allFriends.sort((a, b) => {
+                        const aActive = a.querySelector('.badge')?.classList.contains('bg-success') ? 1 : 0;
+                        const bActive = b.querySelector('.badge')?.classList.contains('bg-success') ? 1 : 0;
+                        return bActive - aActive;
+                      });
+
+                      friendsList.innerHTML = '';
+                      allFriends.forEach(li => friendsList.appendChild(li));
+
+                      searchInput.dispatchEvent(new Event('input'));
+                    } else {
+                      addButton.textContent = 'Error';
+                      addButton.classList.replace('btn-outline-primary', 'btn-danger');
+                    }
+                  } catch (err) {
+                    console.error('Add friend error:', err);
+                    addButton.textContent = 'Error';
+                    addButton.classList.replace('btn-outline-primary', 'btn-danger');
+                  }
+                });
+              }
+
+              resultsBox.appendChild(li);
+            });
+
+            attachProfileModalHandlers();
+          } catch (error) {
+            console.error('Search error:', error);
+          }
         });
 
-        attachProfileModalHandlers();
-      } catch (error) {
-        console.error('Search error:', error);
-      }
-    });
+        document.addEventListener('click', (event) => {
+          const isClickInside = searchInput.contains(event.target) || resultsBox.contains(event.target);
+          if (!isClickInside) {
+            resultsBox.innerHTML = '';
+          }
+        });
+      });
+      const socket = io();
+      const userId = {{ user.user_id }};
+      socket.emit('register-user', { userId });
+      socket.on('invite-user-to-session', ({ groupId }) => {
+        console.log('📩 Received invite for group:', groupId);
+        const inviteModal = new bootstrap.Modal(document.getElementById('inviteModal'));
+        inviteModal.show();
 
-    document.addEventListener('click', (event) => {
-      const isClickInside = searchInput.contains(event.target) || resultsBox.contains(event.target);
-      if (!isClickInside) {
-        resultsBox.innerHTML = '';
-      }
-    });
-  });
-</script>
-</div>
+        // Add click handler for the Join button
+        document.getElementById('joinSwipeBtn')?.addEventListener('click', () => {
+          socket.emit('accept-session-invite', { groupId, userId });
+        });
+      });
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          const friendsList = document.getElementById('friendsList');
+          const items = Array.from(friendsList.children);
+          items.sort((a, b) => parseInt(b.dataset.active) - parseInt(a.dataset.active));
+          items.forEach(li => friendsList.appendChild(li));
+        }, 0); // 0ms delay ensures it runs after initial render
+      });
+    </script>
+  </div>
 </div>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">

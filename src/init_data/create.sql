@@ -2,24 +2,27 @@
 CREATE DATABASE feast_finder_db;
 
 CREATE TYPE swipe_direction_enum AS ENUM ('left', 'right');
-CREATE TABLE users (
+
+CREATE TABLE IF NOT EXISTS users (
+
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE,
+    phone VARCHAR(20) UNIQUE, --  New: Optional and must be unique
     password_hash VARCHAR(255), -- LATER IMPLEMENT HASHING bcrypt or argon
     location_latitude DECIMAL(10, 6),
     location_longitude DECIMAL(10, 6),
     active BOOLEAN DEFAULT TRUE,
     last_active_at TIMESTAMP WITH TIME ZONE,
-    profile_picture_url TEXT, -- ✅ New field added
+    profile_picture_url TEXT, --  Profile pic field
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-
 
 COMMENT ON TABLE users IS 'Stores information about users of the Feast Finder app.';
 COMMENT ON COLUMN users.user_id IS 'Unique identifier for each user.';
 COMMENT ON COLUMN users.username IS 'Username for login and display.';
 COMMENT ON COLUMN users.email IS 'User''s email address (optional).';
+COMMENT ON COLUMN users.phone IS 'User''s phone number (optional, used for searching or login).'; -- ✅ New
 COMMENT ON COLUMN users.password_hash IS 'Hashed password for secure authentication.';
 COMMENT ON COLUMN users.location_latitude IS 'User''s current latitude.';
 COMMENT ON COLUMN users.location_longitude IS 'User''s current longitude.';

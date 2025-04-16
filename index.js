@@ -235,20 +235,40 @@ app.get('/profile', (req, res) => res.render('Pages/Profile'));
 
 app.get('/friends', async (req, res) => {
   try {
+    const userId = req.session.user.user_id;
+
     const friendsList = await db.any(`
-      SELECT u.user_id, u.username, u.email, u.created_at, u.active
-      FROM users u
+
+      SELECT u.user_id, u.username, u.email, u.created_at, u.active, u.profile_picture_url
+      FROM Users u
       JOIN Friends f ON (u.user_id = f.user_id_1 OR u.user_id = f.user_id_2)
       WHERE (f.user_id_1 = $1 OR f.user_id_2 = $1)
         AND u.user_id != $1
-    `, [req.session.user.user_id]);
+    `, [userId]);
 
-    res.render('Pages/friends', { friends: friendsList });
+
+    const recentMatches = await db.any(`
+      SELECT h.matched_with, h.group_name, h.matched_at, r.name AS restaurant_name
+      FROM UserMatchHistory h
+      JOIN Restaurants r ON r.restaurant_id = h.restaurant_id
+      WHERE h.user_id = $1
+      ORDER BY h.matched_at DESC
+      LIMIT 5
+    `, [userId]);
+
+    res.render('Pages/friends', {
+      friends: friendsList,
+      matches: recentMatches
+    });
+
   } catch (error) {
-    console.error('Error fetching friends:', error);
-    res.render('Pages/friends', { error: 'Failed to load friends' });
+    console.error('Error fetching friends or match history:', error);
+    res.render('Pages/friends', {
+      error: 'Failed to load friends or match history'
+    });
   }
 });
+
 app.post('/session/invite', async (req, res) => {
   try {
     const currentUserId = req.session.userId;              // ID of the current user (inviter)
@@ -329,15 +349,22 @@ app.get('/search-users', async (req, res) => {
         u.user_id, 
         u.username,
         u.active,
+        u.profile_picture_url,
         EXISTS (
           SELECT 1 FROM Friends 
           WHERE 
             (user_id_1 = $1 AND user_id_2 = u.user_id) OR 
             (user_id_2 = $1 AND user_id_1 = u.user_id)
         ) AS is_friend
-      FROM users u
-      WHERE LOWER(u.username) LIKE LOWER($2)
-        AND u.user_id != $1
+
+      FROM Users u
+      WHERE u.user_id != $1
+        AND (
+          LOWER(u.username) LIKE LOWER($2)
+          OR LOWER(u.email) LIKE LOWER($2)
+          OR u.phone LIKE $2
+        )
+
     `, [currentUserId, `%${searchQuery}%`]);
 
     res.json(users);
@@ -349,23 +376,63 @@ app.get('/search-users', async (req, res) => {
 
 
 
-app.get('/users/:userId', async (req, res) => {
+app.get('/users/:userid', async (req, res) => {
+  const targetUserId = parseInt(req.params.userid);
+  const currentUserId = req.session.user?.user_id;
+
+  if (!currentUserId || !targetUserId) {
+    return res.status(400).json({ error: 'Invalid user IDs' });
+  }
+
   try {
-    const user = await db.oneOrNone(
-      `SELECT user_id, username, email, created_at, active, last_active_at FROM users WHERE user_id = $1`,
-      [req.params.userId]
-    );
+
+    const user = await db.oneOrNone(`
+      SELECT u.user_id, u.username, u.active, u.last_active_at, u.profile_picture_url,
+             p.cuisines, p.dietary, p.price_range
+      FROM users u
+      LEFT JOIN user_preferences p ON u.user_id = p.user_id
+      WHERE u.user_id = $1
+    `, [targetUserId]);
+
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const mutualFriends = await db.one(`
+      SELECT COUNT(*) AS count
+      FROM (
+        SELECT CASE 
+                 WHEN f.user_id_1 = $1 THEN f.user_id_2 
+                 ELSE f.user_id_1 
+               END AS friend
+        FROM Friends f
+        WHERE $1 IN (f.user_id_1, f.user_id_2)
+      ) AS current_friends
+      INNER JOIN (
+        SELECT CASE 
+                 WHEN f.user_id_1 = $2 THEN f.user_id_2 
+                 ELSE f.user_id_1 
+               END AS friend
+        FROM Friends f
+        WHERE $2 IN (f.user_id_1, f.user_id_2)
+      ) AS target_friends
+      ON current_friends.friend = target_friends.friend
+    `, [currentUserId, targetUserId]);
+
+    user.mutual_friends_count = parseInt(mutualFriends.count, 10);
+
     res.json(user);
   } catch (err) {
-    console.error('Error loading user profile:', err);
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Error fetching user profile:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+
+
+
+
 app.post('/groups', async (req, res) => {
   const userId = req.session.user?.user_id;
   if (!userId) return res.status(401).json({ success: false, error: 'Not logged in' });
