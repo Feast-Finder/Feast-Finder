@@ -142,9 +142,11 @@ CREATE TABLE IF NOT EXISTS Swipes (
     restaurant_id INTEGER NOT NULL,
     swipe_direction swipe_direction_enum NOT NULL,
     swiped_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (group_id) REFERENCES Groups(group_id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id) ON DELETE CASCADE
+    FOREIGN KEY (group_id) REFERENCES Groups(group_id),
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id),
+    UNIQUE (group_id, user_id, restaurant_id)  -- ✅ This is what you need
+
 );
 
 

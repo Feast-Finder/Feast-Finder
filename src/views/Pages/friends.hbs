@@ -100,6 +100,29 @@
     </div>
 
 
+<script>
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('friendSearch');
+    const resultsBox = document.getElementById('searchResults');
+    const friendsList = document.getElementById('friendsList');
+    const noFriendsMessage = document.getElementById('noFriendsMessage');
+
+    function attachRemoveFriend(button) {
+      if (!button) return;
+      button.addEventListener('click', async function () {
+        const userId = this.dataset.userId;
+        const confirmed = confirm('Are you sure you want to remove this friend?');
+        if (!confirmed) return;
+
+        try {
+          const res = await fetch('/friends/remove', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ friend_id: userId })
+          });
+
+
     <!-- Recent Sessions -->
     <div class="mb-4 position-relative">
       <div class="card shadow">

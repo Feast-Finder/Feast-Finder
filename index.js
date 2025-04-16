@@ -12,6 +12,8 @@ const moment = require('moment');
 const pubClient = createClient({ host: 'redis', port: 6379 });
 const subClient = pubClient.duplicate();
 
+
+
 io.adapter(createAdapter(pubClient, subClient));
 
 pubClient.on('connect', () => console.log('✅ Redis pubClient connected'));
@@ -83,9 +85,12 @@ app.use(session({
 // <!-- Section 4 : Middleware -->
 // *****************************************************
 app.use((req, res, next) => {
-  res.locals.user = req.session.user;
+  if (req.session.user) {
+    res.locals.user = req.session.user;
+  }
   next();
 });
+
 
 
 // *****************************************************
@@ -355,7 +360,8 @@ app.get('/friends', async (req, res) => {
 
 app.post('/session/invite', async (req, res) => {
   try {
-    const currentUserId = req.session.userId;              // ID of the current user (inviter)
+    const currentUserId = req.session.user?.user_id;
+    // ID of the current user (inviter)
     const friendUsername = req.body.friendUsername;        // username entered in the form
 
     // 1. Lookup the friend's user ID by username
@@ -808,195 +814,336 @@ app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
+app.get('/debug-sockets', async (req, res) => {
+  const sockets = await pubClient.hgetall(connectedUsersKey);
+  res.json(sockets);
+});
+
+app.get('/session/status', async (req, res) => {
+  const { groupId } = req.query;
+  if (!groupId) return res.status(400).json({ error: 'Missing groupId' });
+
+  try {
+    const accepted = await pubClient.hgetall(`${groupId}:accepted`);
+    res.json({ accepted: Object.keys(accepted).length > 0 });
+  } catch (err) {
+    console.error('Error checking session status:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
 // *****************************************************
 // <!-- Section 6 : Socket.IO Real-Time Sync Logic -->
 // *****************************************************
 
-const readyForInvite = new Set(); // userId → is ready
-const activeGroups = new Map();  // groupId -> Set of userIds
+const connectedUsersKey = 'connectedUsers';
+const pendingNotifiesKey = 'pendingNotifies';
 
-const connectedUsers = new Map(); // userId → socket.id
 
-io.on('connection', async (socket) => {
+const readyForInvite = new Set();
+const activeGroups = new Map();
+
+io.on('connection', (socket) => {
   let currentUserId = null;
 
-  socket.on('register-user', ({ userId }) => {
+  socket.on('register-user', async ({ userId }) => {
     currentUserId = userId;
-    connectedUsers.set(userId, socket.id);
+    await pubClient.hset(connectedUsersKey, userId, socket.id);
     socket.join(`user-${userId}`);
-    console.log(`👤 Registered and joined user room: user-${userId}`);
+  
+    try {
+      const user = await db.one('SELECT username FROM users WHERE user_id = $1', [userId]);
+      await pubClient.hset('usernamesToIds', user.username, userId);
+    } catch (err) {
+      console.error('Failed to cache username in Redis:', err);
+    }
+    const [pendingInvite, cancelled] = await Promise.all([
+      pubClient.hgetall(`invitePending:${userId}`),
+      pubClient.hgetall(`inviteCancelled:${userId}`)
+    ]);
+
+    for (const [groupId, raw] of Object.entries(pendingInvite)) {
+      if (cancelled && cancelled[groupId]) {
+        await pubClient.hdel(`invitePending:${userId}`, groupId);
+        continue;
+      }
+      const payload = JSON.parse(raw);
+      io.to(socket.id).emit('invite-user-to-session', payload);
+    }
+
+    for (const groupId of Object.keys(cancelled)) {
+      io.to(socket.id).emit('swipe-session-cancelled', { groupId });
+      await pubClient.hdel(`inviteCancelled:${userId}`, groupId);
+    }
   });
 
   socket.on('ready-for-invites', ({ userId }) => {
-    console.log(`✅ User ${userId} is ready to receive invites`);
     readyForInvite.add(userId);
   });
 
-  socket.on('join-session', ({ groupId, userId }) => {
+  socket.on('invite-user-by-username', async ({ username, groupId, lat, lng, types }) => {
+    const target = await pubClient.hget('usernamesToIds', username);
+    if (!target) return;
+    await pubClient.set(`activeGroup:${currentUserId}`, groupId); 
+    await pubClient.hset(`invitePending:${target}`, groupId, JSON.stringify({ groupId, lat, lng, types }));
+    await pubClient.hset(pendingNotifiesKey, groupId, currentUserId);
+    await pubClient.hset('groupInvitees', groupId, target);
+
+    for (let i = 0; i < 20; i++) {
+      const sockets = await io.in(`user-${target}`).fetchSockets();
+      if (sockets.length > 0) {
+        console.log(`✅ Found socket for user-${target}, sending invite`);
+        io.to(`user-${target}`).emit('invite-user-to-session', {
+          groupId, // ✅ lowercase
+          lat,
+          lng,
+          types,
+          senderId: currentUserId // optional
+        });
+        
+        return;
+      }
+      await new Promise(res => setTimeout(res, 250));
+    }
+   
+await pubClient.set(`activeGroup:${currentUserId}`, groupId);
+
+  });
+
+  socket.on('join-session', async (payload) => {
+    const groupId = payload.groupId;
+    const userId = payload.userId;
+  
+    if (!groupId || !userId) {
+      console.error('❌ Missing groupId or userId in join-session');
+      return;
+    }
+  
     if (!activeGroups.has(groupId)) activeGroups.set(groupId, new Set());
     activeGroups.get(groupId).add(userId);
     socket.join(`group-${groupId}`);
-    console.log(`🧩 ${userId} joined group ${groupId}`);
-  });
-
-  socket.on('debug-message', ({ userId, message }) => {
-    io.to(`user-${userId}`).emit('debug-reply', { message: `Reply to: ${message}` });
-  });
-
-  socket.on('ready-to-swipe', async ({ groupId, userId }) => {
-    const session = activeSessions.get(groupId);
-    if (!session) return;
-
-    session.ready.add(userId);
-    if (session.ready.size === session.users.size) {
-      console.log(`🚀 Everyone is ready for group ${groupId}, emitting start-swiping`);
-
-      const group = await db.oneOrNone(
-        'SELECT location_latitude, location_longitude FROM Groups WHERE group_id = $1',
-        [groupId]
-      );
-
-      if (!group) {
-        console.warn(`⚠️ Could not fetch location for group ${groupId}`);
-        return;
-      }
-
-      io.to(`group-${groupId}`).emit('start-swiping', {
-        lat: parseFloat(group.location_latitude),
-        lng: parseFloat(group.location_longitude),
-        types: session.types || []
-      });
-    }
-  });
-
-  socket.on('invite-user-by-username', async ({ username, groupId, lat, lng, types }) => {
-    console.log('📨 Received invite-user-by-username event for:', username);
-    console.log(`📤 Sending invite with types:`, types);
-
+  
     try {
-      const target = await db.oneOrNone('SELECT user_id FROM users WHERE username = $1', [username]);
-      if (!target) {
-        console.log('❌ No user found with username:', username);
-        return;
-      }
-
-      const room = `user-${target.user_id}`;
-      if (!activeSessions.has(groupId)) {
-        activeSessions.set(groupId, { users: new Set(), ready: new Set(), types });
-      } else {
-        activeSessions.get(groupId).types = types;
-      }
-
-
-      for (let i = 0; i < 20; i++) {
-        const sockets = await io.in(room).fetchSockets();
-
-
-        if (sockets.length > 0) {
-          console.log(`✅ User ${target.user_id} found in room ${room}, sending invite`);
-          io.to(room).emit('invite-user-to-session', {
-            groupId,
-            lat,
-            lng,
-            types
-          });
-
-          return;
-        }
-
-        console.log(`⏳ Waiting for ${room} to be ready... Retry ${i + 1}`);
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      }
-
-      console.warn(`❌ Failed to emit to ${room} after retries`);
+      await pubClient.set(`activeGroup:${userId}`, groupId);
+      console.log(`✅ Stored active group for user ${userId}: ${groupId}`);
     } catch (err) {
-      console.error('❌ Error in invite-user-by-username:', err);
+      console.error('❌ Failed to store active group in Redis:', err);
     }
   });
+  
 
   socket.on('accept-session-invite', async ({ groupId, userId }) => {
     if (!activeSessions.has(groupId)) {
       activeSessions.set(groupId, { users: new Set(), ready: new Set(), types: [] });
     }
+    const session = activeSessions.get(groupId);
+    session.users.add(userId);
+    session.ready.add(userId);
+// Add user to GroupMembers table if not already present
+await db.none(`
+  INSERT INTO groupmembers (group_id, user_id)
+  VALUES ($1, $2)
+  ON CONFLICT (group_id, user_id) DO NOTHING
+`, [groupId, userId]);
 
+    await pubClient.hset(`${groupId}:accepted`, userId, 'true');
+
+    const senderId = await pubClient.hget(pendingNotifiesKey, groupId);
+    if (senderId) {
+      const senderSocketId = await pubClient.hget(connectedUsersKey, senderId);
+      if (senderSocketId) io.to(senderSocketId).emit('friend-accepted-invite');
+    }
+
+    io.to(`group-${groupId}`).emit('friend-accepted-invite');
+    await pubClient.hdel(`invitePending:${userId}`, groupId);
+  });
+
+  socket.on('ready-to-swipe', async ({ groupId, userId, lat, lng, types }) => {
+    if (!activeSessions.has(groupId)) {
+      activeSessions.set(groupId, { users: new Set(), ready: new Set(), types });
+    }
     const session = activeSessions.get(groupId);
     session.users.add(userId);
     session.ready.add(userId);
 
-    if (session.ready.size === session.users.size) {
-      console.log(`🚀 Everyone is ready for group ${groupId}, emitting start-swiping`);
-
-      try {
-        const group = await db.oneOrNone(
-          `SELECT location_latitude, location_longitude FROM Groups WHERE group_id = $1`,
-          [groupId]
-        );
-
-        if (!group) {
-          console.warn('⚠️ Could not find group', groupId);
-          return;
-        }
-
-        io.to(`group-${groupId}`).emit('start-swiping', {
-          lat: group.location_latitude,
-          lng: group.location_longitude,
-          types: session.types || []
-        });
-
-        console.log('✅ Emitted start-swiping to group with coords:', group.location_latitude, group.location_longitude);
-      } catch (err) {
-        console.error('❌ Error fetching group lat/lng:', err);
-      }
+    if (session.users.size === session.ready.size) {
+      io.to(`group-${groupId}`).emit('start-swiping', { lat, lng, types });
+      await pubClient.del(`${groupId}:accepted`);
+      await pubClient.hdel(pendingNotifiesKey, groupId);
     }
   });
 
-  socket.on('user-swipe', async ({ groupId, userId, restaurant }) => {
-    try {
-      let restaurantId;
-      const existing = await db.oneOrNone(
-        `SELECT restaurant_id FROM Restaurants WHERE api_restaurant_id = $1`,
-        [restaurant.place_id]
-      );
+  socket.on('cancel-swipe-session', async ({ groupId, userId }) => {
+    await pubClient.sadd('cancelledGroups', groupId);
+    io.to(socket.id).emit('cancel-ack', { groupId });
 
-      if (existing) {
-        restaurantId = existing.restaurant_id;
-      } else {
-        const newRest = await db.one(
-          `INSERT INTO Restaurants (api_restaurant_id, name, address, latitude, longitude, api_data)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           RETURNING restaurant_id`,
-          [
-            restaurant.place_id,
-            restaurant.name,
-            restaurant.address || '',
-            restaurant.lat,
-            restaurant.lng,
-            restaurant
-          ]
-        );
-        restaurantId = newRest.restaurant_id;
+    const inviteeId = await pubClient.hget('groupInvitees', groupId);
+    if (inviteeId) {
+      const inviteeSocketId = await pubClient.hget('connectedUsers', inviteeId);
+      console.log('🧹 Cancel logic triggered for group:', groupId);
+      console.log('🔗 Invitee ID:', inviteeId);
+      console.log('📡 Invitee socket ID:', inviteeSocketId);
+      if (inviteeSocketId) {
+        io.to(inviteeSocketId).emit('swipe-session-cancelled', { groupId });
       }
-
-      await db.none(
-        `INSERT INTO Swipes (group_id, user_id, restaurant_id, swipe_direction)
-         VALUES ($1, $2, $3, $4)`,
-        [groupId, userId, restaurantId, restaurant.swipeDirection]
-      );
-
-      socket.to(`group-${groupId}`).emit('peer-swipe', {
-        userId,
-        restaurantId,
-        direction: restaurant.swipeDirection
-      });
-    } catch (err) {
-      console.error('❌ Error handling swipe:', err);
     }
-  });
 
-  socket.on('disconnect', () => {
-    console.log(`🔌 Socket ${socket.id} disconnected`);
+    
+    await pubClient.hdel(`invitePending:${inviteeId}`, groupId); // not userId
+    await pubClient.hdel(`inviteCancelled:${inviteeId}`, groupId);
+    await pubClient.del(`${groupId}:accepted`);
+    await pubClient.del(`groupInvitees:${groupId}`);
+    await db.none('DELETE FROM swipes WHERE group_id = $1', [groupId]);
   });
 });
+async function getPhotoUrlFromDBOrPlaces(place_id) {
+  try {
+    const result = await db.oneOrNone(
+      `SELECT image_url FROM restaurants WHERE api_restaurant_id = $1`,
+      [place_id]
+    );
+
+    if (result?.image_url) {
+      return result.image_url;
+    } else {
+      return 'https://via.placeholder.com/800x600?text=Restaurant+Image';
+    }
+  } catch (err) {
+    console.error('❌ Error fetching image_url from DB:', err);
+    return 'https://via.placeholder.com/800x600?text=Restaurant+Image';
+  }
+}
+
+
+
+
+app.post('/restaurants/vote', async (req, res) => {
+  const { groupId, place_id, restaurant_name, liked } = req.body;
+  const user_id = req.session.user?.user_id;
+
+  console.log('🚨 Incoming vote payload:', req.body);
+
+  if (!user_id || !groupId || !place_id) {
+    return res.status(400).json({ success: false, error: 'Missing required fields' });
+  }
+
+  try {
+    // Step 1: Get or insert restaurant
+    let restaurant = await db.oneOrNone(`
+      SELECT restaurant_id FROM restaurants WHERE api_restaurant_id = $1
+    `, [place_id]);
+
+    if (!restaurant) {
+      // Insert minimal info if it doesn't exist
+      await db.none(`
+        INSERT INTO restaurants (api_restaurant_id, name, latitude, longitude)
+        VALUES ($1, $2, 0, 0)
+        ON CONFLICT (api_restaurant_id) DO NOTHING
+      `, [place_id, restaurant_name]);
+      
+      restaurant = await db.one(`
+        SELECT restaurant_id FROM restaurants WHERE api_restaurant_id = $1
+      `, [place_id]);
+      
+    }
+
+    const restaurant_id = restaurant.restaurant_id;
+
+    // Step 2: Save or update the swipe
+    await db.none(`
+      INSERT INTO swipes (group_id, user_id, restaurant_id, swipe_direction)
+      VALUES ($1, $2, $3, 'right')
+      ON CONFLICT (group_id, user_id, restaurant_id) DO UPDATE SET swipe_direction = 'right'
+    `, [groupId, user_id, restaurant_id]);
+
+    // Step 3: Only check for match if user liked it
+    if (liked) {
+      const { count } = await db.one(`
+        SELECT COUNT(DISTINCT user_id) FROM swipes
+        WHERE group_id = $1 AND restaurant_id = $2 AND swipe_direction = 'right'
+      `, [groupId, restaurant_id]);
+      const groupMembers = await db.any(`
+        SELECT * FROM groupmembers WHERE group_id = $1
+      `, [groupId]);
+      
+      console.log(`👥 Raw group members for group ${groupId}:`, groupMembers);
+      
+      const { total } = await db.one(`
+        SELECT COUNT(*) AS total FROM groupmembers WHERE group_id = $1
+      `, [groupId]);
+      
+      
+      console.log('🧮 Match check — count of likes:', count, 'group total members:', total);
+
+      if (parseInt(count) === parseInt(total)) {
+        console.log(`✅ Match found in group ${groupId} for ${restaurant_name}`);
+
+        const photoUrl = await getPhotoUrlFromDBOrPlaces(place_id);
+
+        // Clean up swipes after match
+        await db.none(`DELETE FROM swipes WHERE group_id = $1`, [groupId]);
+
+// 1. Emit to entire group (still useful if swiping in sync)
+io.to(`group-${groupId}`).emit('match-found', {
+  restaurant: {
+    place_id,
+    restaurant_name,
+    photoUrl: photoUrl || null,
+  }
+});
+
+// 2. Also send directly to each user socket in the group
+const members = await db.any(`
+  SELECT user_id FROM groupmembers WHERE group_id = $1
+`, [groupId]);
+
+for (const member of members) {
+  const socketId = await pubClient.hget('connectedUsers', member.user_id);
+  if (socketId) {
+    io.to(socketId).emit('match-found', {
+      restaurant: {
+        place_id,
+        restaurant_name,
+        photoUrl: photoUrl || null,
+      }
+    });
+  }
+}
+
+
+        return res.json({ success: true, isMatch: true, restaurant: { place_id, restaurant_name, photoUrl } });
+      }
+    }
+
+    res.json({ success: true, isMatch: false });
+
+  } catch (err) {
+    console.error('❌ Error in /restaurants/vote:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// Example route to get groupId for a sender
+app.get('/session/group-for-sender', async (req, res) => {
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ success: false });
+
+  try {
+    const groupId = await pubClient.get(`activeGroup:${userId}`);
+    if (!groupId) return res.json({ success: false });
+
+    res.json({ success: true, groupId });
+  } catch (err) {
+    console.error('Error fetching group for sender:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
+
+
+
+  
+
 
 
 // *****************************************************

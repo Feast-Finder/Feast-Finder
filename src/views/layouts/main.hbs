@@ -1,4 +1,77 @@
 {{>head}}
 {{>nav}}
+<script src="/socket.io/socket.io.js"></script>
 {{{body}}}
+
+<!-- Invitation Modal (triggered on any page) -->
+<div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="inviteModalLabel">Swipe Session Invite</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        A friend invited you to join a swiping session.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="joinSwipeBtn">Join Swiping</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const USER_ID = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
+let socket = io();
+
+socket.on('connect', () => {
+  if (USER_ID) {
+    socket.emit('register-user', { userId: USER_ID });
+    socket.emit('ready-for-invites', { userId: USER_ID });
+  }
+});
+
+// Show invite modal when an invite is received
+socket.on('invite-user-to-session', ({ groupId, lat, lng, types }) => {
+  const redirected = sessionStorage.getItem('redirectedFromInvite');
+  if (redirected === 'accepted') return;
+
+  sessionStorage.setItem('invitePayload', JSON.stringify({ groupId, lat, lng, types }));
+  sessionStorage.setItem('redirectedFromInvite', 'pending');
+
+  const modalEl = document.getElementById('inviteModal');
+  const joinBtn = document.getElementById('joinSwipeBtn');
+  if (!modalEl || !joinBtn) return;
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+
+  joinBtn.onclick = () => {
+    sessionStorage.setItem('redirectedFromInvite', 'accepted');
+    modal.hide();
+    document.body.classList.remove('modal-open');
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    window.location.href = '/home'; // redirect to home to begin session
+  };
+});
+
+// Optional: handle session cancellation
+socket.on('swipe-session-cancelled', ({ groupId }) => {
+  console.log('❌ Session was cancelled for group:', groupId);
+  sessionStorage.removeItem('invitePayload');
+  sessionStorage.setItem('redirectedFromInvite', 'cancelled');
+
+  const modalEl = document.getElementById('inviteModal');
+  if (modalEl) {
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal?.hide();
+  }
+});
+</script>
+
+
+
+
+
 {{>footer}}

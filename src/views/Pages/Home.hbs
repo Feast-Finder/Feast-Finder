@@ -2,6 +2,7 @@
 {{#> layout name="main" }}
 <!-- Bootstrap CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
 <div class="container pt-3">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
@@ -102,24 +103,24 @@
                     <div class="mb-3">
                         <label class="form-label">Restaurant Type (optional)</label>
                         <div class="d-flex flex-wrap gap-2">
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="cafe" value="cafe">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="cafe" id="cafe" checked>
                                 <label class="form-check-label" for="cafe">Cafe</label>
                             </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="bar" value="bar">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="bar" id="bar" checked>
                                 <label class="form-check-label" for="bar">Bar</label>
                             </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="fine_dining" value="fine_dining">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="restaurant" id="restaurant" checked>
+                                <label class="form-check-label" for="restaurant">Restaurant</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="fine_dining" id="fine_dining" checked>
                                 <label class="form-check-label" for="fine_dining">Fine Dining</label>
                             </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="fast_food" value="fast_food">
-                                <label class="form-check-label" for="fast_food">Fast Food</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="bakery" value="bakery">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="bakery" id="bakery" checked>
                                 <label class="form-check-label" for="bakery">Bakery</label>
                             </div>
                         </div>
@@ -156,7 +157,8 @@
 </div>
 <!-- Waiting Overlay -->
 <div id="waitingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-75 text-white fw-bold fs-4 d-none" style="z-index: 1050;">
-  Waiting on your friend to join the session...
+  <h3 class="text-white mb-3">Waiting for friend to join...</h3>
+  <button type="button" class="btn btn-danger" id="cancelInviteBtn">Cancel Invite</button>
 </div>
 
 
@@ -176,12 +178,13 @@
       </div>
     </div>
   </div>
-</div>
+
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const modalEl = document.getElementById('inviteModal');
     console.log('🔍 Test: inviteModalEl is', modalEl);
   });
+  
 </script>
 
 
@@ -255,165 +258,275 @@
 
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxYA0OMGoBZ093MoeamguWrt7jfxl44EU&libraries=places&loading=async&callback=initMap"></script>
 <script src="/socket.io/socket.io.js"></script>
-<script>    
-   
-     const socket = io();
+<script>
+const USER_ID = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
+ let currentGroupId = null;
+let groupId = null;
+let socket = io();
 
-  document.addEventListener('DOMContentLoaded', () => {
-console.log('🚀 DOM loaded and JS running');
+function enableSwipingUI() {
+  const overlay = document.getElementById('contentOverlay');
+  document.getElementById('waitingOverlay')?.classList.add('d-none');
+  if (overlay) {
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      document.getElementById('like-btn')?.removeAttribute('disabled');
+      document.getElementById('dislike-btn')?.removeAttribute('disabled');
+    }, 500);
+  }
+}
 
-     console.log('✅ Socket initialized:', socket);
+function showWaitingOverlay() {
+  const overlay = document.getElementById('contentOverlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    overlay.style.opacity = '0.7';
+  }
+  document.getElementById('waitingOverlay')?.classList.remove('d-none');
+  document.getElementById('like-btn')?.setAttribute('disabled', 'true');
+  document.getElementById('dislike-btn')?.setAttribute('disabled', 'true');
+}
 
-    const userId = {{user.user_id}};
-    console.log('Loaded userId from template:', userId);
-
-    let groupId = null;
-
-
-
-socket.on('connect', () => {
-  console.log('✅ Connected, socket id:', socket.id);
-  socket.emit('register-user', { userId });
-});
-
-    console.log('✅ Registered user', userId);
-
-console.log('📡 Setting up invite listener'); // A — you’re attaching the listener
-
-let sessionLat = null;
-let sessionLng = null;
-let types = Array.from(document.querySelectorAll('.form-check-input:checked'))
+function disableSwipingUI() {
+  document.getElementById('like-btn')?.setAttribute('disabled', 'true');
+  document.getElementById('dislike-btn')?.setAttribute('disabled', 'true');
+  const overlay = document.getElementById('contentOverlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    overlay.style.opacity = '0.7';
+  }
+  document.getElementById('waitingOverlay')?.classList.remove('d-none');
+}
 
 
-socket.on('invite-user-to-session', ({ groupId, lat, lng, types }) => {
-  console.log('🔥 invite-user-to-session event received');
-  console.log('🔔 About to show the invite modal for group:', groupId);
-  sessionLat = lat;
-  sessionLng = lng;
-  sessionTypes = types || [];
-  const inviteModalEl = document.getElementById('inviteModal');
-  const joinBtn = document.getElementById('joinSwipeBtn');
 
-  if (!inviteModalEl || !joinBtn) {
-    console.error('❌ Modal or button missing');
-    return;
+let inviteState = {
+   groupId: null,
+  lat: null,
+  lng: null,
+  types: [],
+  isSender: false
+};
+
+
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const redirectFlag = sessionStorage.getItem('redirectedFromInvite');
+  if (redirectFlag !== 'accepted') {
+    sessionStorage.removeItem('invitePayload'); // only clear if not restoring
   }
 
-  const modal = bootstrap.Modal.getOrCreateInstance(inviteModalEl);
+ 
+ inviteState = {
+  groupId: null,
+  lat: null,
+  lng: null,
+  types: [],
+  isSender: false
+};
+
+const cancelBtn = document.getElementById('cancelInviteBtn');
+if (cancelBtn) {
+  cancelBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const groupId = inviteState.groupId;
+    if (groupId && USER_ID) {
+      socket.emit('cancel-swipe-session', {groupId, userId: USER_ID });
+    }
+
+    // 💥 Fully clear session data
+    sessionStorage.clear(); // ← clears all keys including invitePayload, redirectedFromInvite, etc.
+
+    // 💥 Reset internal invite state
+inviteState = {
+  groupId: null,
+  lat: null,
+  lng: null,
+  types: [],
+  isSender: false
+};
+
+
+    // 💥 Hide invite modal if present
+    const modalEl = document.getElementById('inviteModal');
+    if (modalEl) {
+      const modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.hide();
+    }
+
+    document.body.classList.remove('modal-open');
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+
+    // 💥 Hide swiping overlays
+    document.getElementById('waitingOverlay')?.classList.add('d-none');
+    const overlay = document.getElementById('contentOverlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+      overlay.style.opacity = '0';
+    }
+
+    // 💥 Redirect home
+    setTimeout(() => {
+      window.location.href = '/home';
+    }, 300);
+  });
+}
+let groupCreated = false;
+
+  const inviteBtn = document.getElementById('startSessionBtn');
+  if (inviteBtn) {
+    inviteBtn.addEventListener('click', async () => {
+      showWaitingOverlay();
+  if (groupCreated) return; // 🛑 prevent re-submission
+  groupCreated = true;
+      const groupName = document.getElementById('groupName')?.value || 'Session';
+      const location = document.getElementById('location')?.value;
+      const friendUsername = document.getElementById('friendUsername')?.value;
+      const selectedTypes = Array.from(document.querySelectorAll('.form-check-input:checked'))
+        .map(cb => cb.value)
+        .filter(v => v !== 'on');
+
+      const geoResults = await new Promise((resolve, reject) => {
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address: location }, (results, status) => {
+          if (status === 'OK') resolve(results);
+          else reject(status);
+        });
+      });
+
+      const geocodedLat = geoResults[0].geometry.location.lat();
+      const geocodedLng = geoResults[0].geometry.location.lng();
+
+      const res = await fetch('/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: groupName, location, lat: geocodedLat, lng: geocodedLng })
+      });
+
+      const data = await res.json();
+      if (!data.success) return alert('Group creation failed');
+
+    const groupId = data.group_id;
+currentGroupId = data.group_id
+
+      inviteState = {
+  groupId: groupId,
+  lat: geocodedLat,
+  lng: geocodedLng,
+  types: selectedTypes,
+  senderId: USER_ID,     
+  isSender: true
+};
+sessionStorage.setItem('invitePayload', JSON.stringify(inviteState));
+
+
+      socket.emit('join-session', { groupId, userId: USER_ID });
+
+      if (friendUsername) {
+socket.emit('invite-user-by-username', {
+  username: friendUsername,
+  groupId,
+  lat: geocodedLat,
+  lng: geocodedLng,
+  types: selectedTypes,
+  senderId: USER_ID  // include this in the payload!
+});
+
+      }
+    });
+  }
+});
+
+socket.on('invite-user-to-session', async ({ groupId, lat, lng, types }) => {
+  const redirected = sessionStorage.getItem('redirectedFromInvite');
+  if (redirected === 'accepted') return;
+
+  sessionStorage.setItem('invitePayload', JSON.stringify({ groupId, lat, lng, types }));
+  sessionStorage.setItem('redirectedFromInvite', 'pending');
+
+  const modalEl = document.getElementById('inviteModal');
+  const joinBtn = document.getElementById('joinSwipeBtn');
+  if (!modalEl || !joinBtn) return;
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   modal.show();
-  console.log('✅ Modal.show() called');
 
   joinBtn.onclick = () => {
-    console.log('📬 Accepting invite for group', groupId);
-  socket.emit('join-session', { groupId, userId });
-  socket.emit('accept-session-invite', { groupId, userId });
-  socket.emit('ready-to-swipe', { groupId, userId }); // ✅ THIS IS KEY FOR THE RECEIVER
+    sessionStorage.setItem('redirectedFromInvite', 'accepted');
     modal.hide();
     document.body.classList.remove('modal-open');
-document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    window.location.href = '/home';
   };
 });
 
-    // START SESSION
-    document.getElementById('startSessionBtn')?.addEventListener('click', async () => {
-      const groupName = document.getElementById('groupName')?.value || 'Session';
-      const friendUsername = document.getElementById('friendUsername')?.value;
-
-      if (!friendUsername) {
-        alert('Please select a friend to invite.');
-        return;
-      }
-
-      try {
-        const res = await fetch('/groups', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-  name: groupName,
-  location,
-  lat: 40.014984, 
-  lng: -105.270546
-})
-        });
-
-if (!res.ok) {
-  const text = await res.text();
-  console.error('❌ Server returned error:', res.status, text);
-  alert('Failed to start session');
-  return;
-}
-        const data = await res.json();
-        if (!data.success) {
-          alert('Failed to start session');
-          return;
-        }
-
-        groupId = data.group_id;
-        console.log('✅ Group created with ID:', groupId);
-
-        // Join own group room
-        socket.emit('join-session', { groupId, userId });
 socket.on('friend-accepted-invite', () => {
-  socket.emit('ready-to-swipe', { groupId, userId });
+  enableSwipingUI();
 });
 
+socket.on('start-swiping', ({ lat, lng, types }) => {
+  enableSwipingUI();
+});
 
-        // Send invite to friend
-setTimeout(() => {
-  console.log('📨 Emitting invite-user-by-username', friendUsername, groupId);
-  console.log(`📤 Sending invite with types:`, types);
-  const selectedTypes = Array.from(document.querySelectorAll('.form-check-input:checked'))
-  .map(cb => cb.value)
-  .filter(v => v !== 'on');
-
-  socket.emit('invite-user-by-username', {
-    username: friendUsername,
-    groupId,
-    lat: 40.014984, 
-    lng: -105.270546,
-    types: selectedTypes
-  });
-}, 1000); 
+socket.on('swipe-session-cancelled', ({ groupId }) => {
+  console.log('❌ Session was cancelled for group:', groupId);
 
 
-        // Optionally show waiting UI here
-        document.getElementById('waitingOverlay')?.classList.remove('d-none');
+  // Clear invite data
+  sessionStorage.removeItem('invitePayload');
+  sessionStorage.removeItem('redirectedFromInvite');
 
-   } catch (err) {
-console.error('❌ Geocoding or session start error:', err);
+inviteState = {
+  groupId: null,
+  lat: null,
+  lng: null,
+  types: [],
+  isSender: false
+};
 
-if (err instanceof Response) {
-  try {
-    const errorText = await err.text();
-    console.error('📨 Server responded with:', errorText);
-  } catch (innerErr) {
-    console.error('❌ Failed to parse server error:', innerErr);
+
+  // Hide invite modal
+  const modalEl = document.getElementById('inviteModal');
+  if (modalEl) {
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
   }
-} else if (err instanceof Error) {
-  console.error('🧠 Error message:', err.message);
-  console.error('🧠 Stack trace:', err.stack);
-} else {
-  console.error('🧩 Unknown error object:', JSON.stringify(err));
-}
+  const modalE = document.getElementById('waitingOverlay');
+  if (modalE) {
+    const modal = bootstrap.Modal.getInstance(modalE);
+    modal.hide();
+  }
+ 
+sessionStorage.setItem('redirectedFromInvite', 'cancelled');
 
-  alert('Failed to start session');
-}
+  disableSwipingUI();
+});
+socket.on('match-found', ({ restaurant }) => {
+  if (!restaurant) return;
+console.log('🎉 Match received on client:', restaurant);
 
-    });
+  // Update modal content
+  document.getElementById('match-restaurant-name').textContent = restaurant.restaurant_name;
 
-    // RECEIVE INVITE
+  const matchImage = document.getElementById('match-restaurant-image');
+  if (restaurant.photoUrl) {
+    matchImage.src = restaurant.photoUrl;
+  } else {
+    matchImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
+  }
 
+  document.getElementById('match-restaurant-link').href = `https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`;
 
-    // START SWIPING
-
-socket.emit('register-user', { userId }, () => {
-  console.log('🧠 Confirmed user registered on server');
-  socket.emit('ready-for-invites', { userId });  // <- this is key
+  // Show modal
+  const matchModal = new bootstrap.Modal(document.getElementById('matchModal'));
+  matchModal.show();
 });
 
 
-  });
+
 
 
 
@@ -424,14 +537,14 @@ socket.emit('register-user', { userId }, () => {
 
     let currentRestaurants = [];
     let currentIndex = 0;
-    let currentGroupId = null;
+ 
     let selectedFriends = [];
     let service;
     let geocoder;
     let autocompleteService;
     let mapDiv;
 
-    function initMap() {
+    async function initMap() {
         console.log("Google Maps API loaded successfully");
         
         // Initialize Google Maps services
@@ -569,9 +682,8 @@ startSessionBtn.addEventListener('click', async function () {
       });
     });
 
-const geocodedLat = 40.014984;
-const geocodedLng =  -105.270546;
-
+    const geocodedLat = geoResults[0].geometry.location.lat();
+    const geocodedLng = geoResults[0].geometry.location.lng();
     console.log('Geocoded:', geocodedLat, geocodedLng);
 
     // Send group creation request to backend
@@ -593,8 +705,9 @@ const geocodedLng =  -105.270546;
 
     if (data.success) {
       currentGroupId = data.group_id;
-      console.log('Group created with ID:', currentGroupId);
 
+      console.log('Group created with ID:', currentGroupId);
+      searchNearbyRestaurants({ lat: geocodedLat, lng: geocodedLng });
 
       contentOverlay.style.opacity = '0';
       setTimeout(() => {
@@ -617,32 +730,43 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
   }
 });
 
+
        
 
-        function searchNearbyRestaurants(location, SelectedTypes =[]) {
-            console.log('Searching for restaurants near:', location);
-  const request = {
-    location: location,
-    radius: 5000,
-    type: 'restaurant'
-  };
-  if (SelectedTypes.length > 0) {
-    request.keyword = SelectedTypes.join(' ');
-  }
-            // Add restaurant type filters if selected
-   const selectedTypes = (SelectedTypes.length > 0) ? SelectedTypes : [];
-
-  if (selectedTypes.length > 0) {
-    request.keyword = selectedTypes.join(' ');
-  }
-
-            console.log('Places API request:', request);
+    function searchNearbyRestaurants(location) {
+            console.log('Starting restaurant search at location:', location);
+            
+            const request = {
+                location: location,
+                radius: 5000,
+                type: 'restaurant'
+            };
+            
+            // Define valid restaurant types
+            const validTypes = [
+                'restaurant',
+                'cafe',
+                'bar',
+                'bakery',
+                'meal_delivery',
+                'meal_takeaway',
+                'food'
+            ];
+            
+            // Get selected types from checkboxes
+            const selectedTypes = Array.from(document.querySelectorAll('.form-check-input:checked'))
+                .map(cb => cb.value)
+                .filter(v => v !== 'on');
+            
+            console.log('Selected types:', selectedTypes);
+            
+            // Only add keyword filter if specific types are selected
+            if (selectedTypes.length > 0) {
+                request.keyword = selectedTypes.join(' ');
+            }
             
             service.nearbySearch(request, (results, status) => {
-                console.log('Places API response status:', status);
-                console.log('Places API response results:', results);
-                
-                if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
                     console.log('Found restaurants:', results.length);
                     
                     // Define the valid restaurant types we want to show
@@ -650,44 +774,33 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
                     
                     // Filter to only include places matching our desired types
                     currentRestaurants = results.filter(place => {
-                        return place.business_status === 'OPERATIONAL' && 
-                               place.types && 
-                               place.types.some(type => validTypes.includes(type));
+                        // First check if the place is operational
+                        if (place.business_status !== 'OPERATIONAL') {
+                            return false;
+                        }
+                        
+                        // If no types are selected, only show actual restaurants
+                        if (selectedTypes.length === 0) {
+                            return place.types && 
+                                   place.types.some(type => validTypes.includes(type));
+                        }
+                        
+                        // If types are selected, ensure the place matches at least one selected type
+                        return place.types && 
+                               place.types.some(type => selectedTypes.includes(type));
                     });
                     
                     console.log('Filtered restaurants:', currentRestaurants.length);
                     
-                    // Apply selected type filters if any are checked
-                    if (selectedTypes.length > 0) {
-                        const filterMap = {
-                            'cafe': ['cafe'],
-                            'bar': ['bar', 'night_club'],
-                            'fine_dining': ['restaurant'],  // We'll need to rely on other attributes for fine dining
-                            'fast_food': ['meal_takeaway', 'fast_food'],
-                            'bakery': ['bakery']
-                        };
-                        
-                        // Further filter by selected types
-                        currentRestaurants = currentRestaurants.filter(place => {
-                            return selectedTypes.some(selectedType => {
-                                const typesToMatch = filterMap[selectedType] || [];
-                                return place.types.some(placeType => typesToMatch.includes(placeType));
-                            });
-                        });
-                        
-                        console.log('After type filtering:', currentRestaurants.length);
+                    if (currentRestaurants.length > 0) {
+                        currentIndex = 0;
+                        showNextRestaurant();
+                    } else {
+                        alert('No restaurants found matching your criteria. Try adjusting your filters or location.');
                     }
-                    
-                    if (currentRestaurants.length === 0) {
-                        alert('No restaurants found in this area. Try expanding your search or changing filters.');
-                        return;
-                    }
-                    
-                    currentIndex = 0;
-                    showNextRestaurant();
                 } else {
-                    console.error('Places API error or no results');
-                    alert('No restaurants found in this area. Please try a different location.');
+                    console.error('Places API error:', status);
+                    alert('Error searching for restaurants. Please try again.');
                 }
             });
         }
@@ -832,7 +945,7 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            group_id: currentGroupId,
+                            groupId: currentGroupId,
                             place_id: restaurant.place_id,
                             restaurant_name: restaurant.name,
                             liked: liked
@@ -922,20 +1035,96 @@ socket.on('start-swiping', ({ lat, lng, types }) => {
 
   if (lat && lng) {
     console.log('📍 Fetching restaurants as receiver...');
-    searchNearbyRestaurants({ lat: parseFloat(lat), lng: parseFloat(lng) }, types || []);
+    searchNearbyRestaurants({ lat: parseFloat(lat), lng: parseFloat(lng) });
   }
 
   likeBtn.removeAttribute('disabled');
   dislikeBtn.removeAttribute('disabled');
 });
+
+// ✅ Insert this block before you use window._pendingInvitePayload
+
+// If we have an invitePayload waiting, now it's safe to load restaurants
+if (window._pendingInvitePayload) {
+  const { groupId, lat, lng, types } = window._pendingInvitePayload;
+
+  try {
+    const res = await fetch(`/session/status?groupId=${groupId}`);
+    const data = await res.json();
+
+    if (data.cancelled) {
+      console.log('🚫 Redis confirms cancelled during pending restore:', groupId);
+      delete window._pendingInvitePayload;
+      sessionStorage.removeItem('invitePayload');
+      return;
+    }
+
+    console.log('📍 Resuming session in initMap with:', groupId, lat, lng, types);
+    searchNearbyRestaurants({ lat: parseFloat(lat), lng: parseFloat(lng) });
+
+    const overlay = document.getElementById('contentOverlay');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        document.getElementById('like-btn')?.removeAttribute('disabled');
+        document.getElementById('dislike-btn')?.removeAttribute('disabled');
+      }, 500);
+    }
+  } catch (err) {
+    console.warn('⚠️ Redis check failed in initMap — being safe and aborting:', err);
+  }
+
+  delete window._pendingInvitePayload;
+}
+}
+    // If the API has already loaded, initialize the map
+
+  
+window.initMap = initMap;
+ 
+let restoring = false;
+
+async function restoreSwipingSession() {
+  const redirected = sessionStorage.getItem('redirectedFromInvite');
+  const payloadRaw = sessionStorage.getItem('invitePayload');
+
+  if (redirected !== 'accepted' || !payloadRaw) return;
+
+  sessionStorage.removeItem('redirectedFromInvite');
+  sessionStorage.removeItem('invitePayload');
+
+  try {
+    const { groupId, lat, lng, types } = JSON.parse(payloadRaw);
+
+    const statusRes = await fetch(`/session/status?groupId=${groupId}`);
+    const status = await statusRes.json();
+    if (status.cancelled) return;
+
+    console.log('🔁 Restoring swipe session:', groupId);
+    socket.emit('join-session', { groupId, userId: USER_ID });
+    socket.emit('accept-session-invite', { groupId, userId: USER_ID });
+    socket.emit('ready-to-swipe', { groupId, userId: USER_ID, lat, lng, types });
+
+    currentGroupId = groupId;
+    initMap();
+
+  } catch (err) {
+    console.error('❌ Failed to restore session:', err);
+  }
 }
 
-    // If the API has already loaded, initialize the map
-    if (window.google && window.google.maps) {
-        console.log("Google Maps already loaded, initializing map");
-        initMap();
-    }
-window.initMap = initMap;
 
-    </script>
+
+socket.on('connect', () => {
+  socket.emit('register-user', { userId: USER_ID });
+  socket.emit('ready-for-invites', { userId: USER_ID });
+  restoreSwipingSession();
+});
+
+
+
+
+</script>
+
 {{/layout}}
