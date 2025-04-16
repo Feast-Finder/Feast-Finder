@@ -1,8 +1,3 @@
-
-
-
-
-
 // *****************************************************
 // <!-- Section 1 : Import Dependencies -->
 // *****************************************************
@@ -99,7 +94,7 @@ app.get('/register', (req, res) => res.render('Pages/register'));
 
 app.post('/check-username', async (req, res) => {
   try {
-    const user = await db.oneOrNone(`SELECT * FROM Users WHERE username = $1`, [req.body.username]);
+    const user = await db.oneOrNone(`SELECT * FROM users WHERE username = $1`, [req.body.username]);
     res.json({ exists: !!user });
   } catch (err) {
     console.log(err);
@@ -113,7 +108,7 @@ app.post('/register', async (req, res) => {
   }
   const hash = await bcrypt.hash(req.body.password, 10);
   try {
-    await db.none(`INSERT INTO Users (username, password_hash) VALUES ($1, $2)`, [req.body.username, hash]);
+    await db.none(`INSERT INTO users (username, password_hash) VALUES ($1, $2)`, [req.body.username, hash]);
     req.session.user = req.body.username;
     req.session.save(() => res.redirect('/login'));
   } catch (err) {
@@ -124,7 +119,7 @@ app.post('/register', async (req, res) => {
 
 app.post('/login', async (req, res) => {
   try {
-    const user = await db.oneOrNone(`SELECT * FROM Users WHERE username = $1`, [req.body.username]);
+    const user = await db.oneOrNone(`SELECT * FROM users WHERE username = $1`, [req.body.username]);
     if (!user) return res.render('Pages/login', { message: 'User not found. <a href="/register">Create one</a>' });
 
     const match = await bcrypt.compare(req.body.password, user.password_hash);
@@ -135,7 +130,7 @@ app.post('/login', async (req, res) => {
 
     // Mark user as active and set last active time 
     await db.none(`
-      UPDATE Users SET active = TRUE, last_active_at = CURRENT_TIMESTAMP WHERE user_id = $1
+      UPDATE users SET active = TRUE, last_active_at = CURRENT_TIMESTAMP WHERE user_id = $1
     `, [user.user_id]);
 
     req.session.save(() => res.redirect('/home'));
@@ -157,7 +152,7 @@ app.get('/welcome', (req, res) => {
 app.post('/register_test', async (req, res) => {
   const hash = await bcrypt.hash(req.body.password, 10);
   try {
-    await db.none(`INSERT INTO Users (username, password_hash) VALUES ($1, $2)`, [req.body.username, hash]);
+    await db.none(`INSERT INTO users (username, password_hash) VALUES ($1, $2)`, [req.body.username, hash]);
     res.json({ result: 'Success' });
     // res.redirect('/login');
   } catch (err) {
@@ -173,7 +168,7 @@ app.get('/friends_test', async (req, res) => {
 
   try {
     const friendsList = await db.any(`
-      SELECT u.user_id, u.username FROM Users u
+      SELECT u.user_id, u.username FROM users u
       JOIN Friends f ON 
         (u.user_id = f.user_id_1 AND f.user_id_2 = $1)
         OR 
@@ -220,7 +215,7 @@ app.get('/home', async (req, res) => {
     // 2. Fetch friends with their user info
     const userFriends = await db.any(`
       SELECT u.*
-      FROM Users u
+      FROM users u
       JOIN Friends f ON (
         (f.user_id_1 = $1 AND f.user_id_2 = u.user_id)
         OR
@@ -243,6 +238,7 @@ app.get('/friends', async (req, res) => {
     const userId = req.session.user.user_id;
 
     const friendsList = await db.any(`
+
       SELECT u.user_id, u.username, u.email, u.created_at, u.active, u.profile_picture_url
       FROM Users u
       JOIN Friends f ON (u.user_id = f.user_id_1 OR u.user_id = f.user_id_2)
@@ -264,6 +260,7 @@ app.get('/friends', async (req, res) => {
       friends: friendsList,
       matches: recentMatches
     });
+
   } catch (error) {
     console.error('Error fetching friends or match history:', error);
     res.render('Pages/friends', {
@@ -359,6 +356,7 @@ app.get('/search-users', async (req, res) => {
             (user_id_1 = $1 AND user_id_2 = u.user_id) OR 
             (user_id_2 = $1 AND user_id_1 = u.user_id)
         ) AS is_friend
+
       FROM Users u
       WHERE u.user_id != $1
         AND (
@@ -366,6 +364,7 @@ app.get('/search-users', async (req, res) => {
           OR LOWER(u.email) LIKE LOWER($2)
           OR u.phone LIKE $2
         )
+
     `, [currentUserId, `%${searchQuery}%`]);
 
     res.json(users);
@@ -386,6 +385,7 @@ app.get('/users/:userid', async (req, res) => {
   }
 
   try {
+
     const user = await db.oneOrNone(`
       SELECT u.user_id, u.username, u.active, u.last_active_at, u.profile_picture_url,
              p.cuisines, p.dietary, p.price_range
@@ -393,6 +393,7 @@ app.get('/users/:userid', async (req, res) => {
       LEFT JOIN user_preferences p ON u.user_id = p.user_id
       WHERE u.user_id = $1
     `, [targetUserId]);
+
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -524,7 +525,7 @@ app.post('/profile/upload', (req, res) => {
     }
 
     try {
-      await db.none(`UPDATE Users SET profile_picture_url = $1 WHERE user_id = $2`, [filePath, userId]);
+      await db.none(`UPDATE users SET profile_picture_url = $1 WHERE user_id = $2`, [filePath, userId]);
       req.session.user.profile_picture_url = filePath;
       res.json({ profile_picture_url: filePath });
     } catch (err) {
@@ -543,12 +544,12 @@ app.post('/profile/update', async (req, res) => {
   const { email, currentPassword, newPassword, confirmNewPassword } = req.body;
 
   try {
-    const user = await db.oneOrNone(`SELECT * FROM Users WHERE user_id = $1`, [userId]);
+    const user = await db.oneOrNone(`SELECT * FROM users WHERE user_id = $1`, [userId]);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     // 1. Update email (if changed)
     if (email && email !== user.email) {
-      await db.none(`UPDATE Users SET email = $1 WHERE user_id = $2`, [email, userId]);
+      await db.none(`UPDATE users SET email = $1 WHERE user_id = $2`, [email, userId]);
       req.session.user.email = email;
     }
 
@@ -573,7 +574,7 @@ app.post('/profile/update', async (req, res) => {
       }
 
       const hashed = await bcrypt.hash(newPassword, 10);
-      await db.none(`UPDATE Users SET password_hash = $1 WHERE user_id = $2`, [hashed, userId]);
+      await db.none(`UPDATE users SET password_hash = $1 WHERE user_id = $2`, [hashed, userId]);
     }
 
     return res.json({ success: true });
@@ -622,7 +623,7 @@ app.get('/logout', async (req, res) => {
     if (req.session.user) {
       const userId = req.session.user.user_id;
       await db.none(`
-        UPDATE Users SET active = FALSE, last_active_at = CURRENT_TIMESTAMP WHERE user_id = $1
+        UPDATE users SET active = FALSE, last_active_at = CURRENT_TIMESTAMP WHERE user_id = $1
       `, [userId]);
 
     }
@@ -736,7 +737,7 @@ io.on('connection', async (socket) => {
     console.log(`📤 Sending invite with types:`, types);
 
     try {
-      const target = await db.oneOrNone('SELECT user_id FROM Users WHERE username = $1', [username]);
+      const target = await db.oneOrNone('SELECT user_id FROM users WHERE username = $1', [username]);
       if (!target) {
         console.log('❌ No user found with username:', username);
         return;
