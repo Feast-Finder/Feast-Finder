@@ -857,6 +857,30 @@ io.on('connection', async (socket) => {
     }
   });
 
+  socket.on('submit-quickdraw-score', ({ groupId, userId, score }) => {
+    const session = activeSessions.get(groupId);
+    if (!session) return;
+
+    if (!session.gameScores) {
+      session.gameScores = new Map();
+    }
+
+    session.gameScores.set(userId, score);
+
+    // Compare scores once all users have submitted
+    if (session.gameScores.size === session.users.size) {
+      let highest = 0;
+      let loser;
+
+      for (const [name, score] of session.gameScores) {
+        loser   = score > highest ? name : loser;
+        highest = score > highest ? score : highest;
+      }
+
+      io.to(`group-${groupId}`).emit('game-results', { loserId: loser });
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log(`🔌 Socket ${socket.id} disconnected`);
   });
