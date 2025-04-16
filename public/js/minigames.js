@@ -73,21 +73,28 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   socket.on('game-results', ({ loserId }) => {
-    if (userId == loserId) {
-      console.log('You lost!');
+    const quickdrawButton = document.getElementById('quickdrawButton');
+    const quickdrawText   = document.getElementById('quickdrawText');
+
+    if (userId === loserId) {
+      quickdrawButton.classList.remove('btn-success');
+      quickdrawButton.classList.add('btn-danger');
+
+      quickdrawText.textContent = 'Too slow! You have to pay.'
+
     } else {
-      console.log('You won!');
+      quickdrawText.textContent = 'Great job! You don\'t have to pay!'
     }
   });
 
   function quickdraw() {
-    const quickdrawModalEl = document.getElementById('quickdrawModal');
-    if (!quickdrawModalEl) {
+    const modalEl = document.getElementById('quickdrawModal');
+    if (!modalEl) {
       console.error('quickdrawModal element not found');
       return;
     }
 
-    const modal = bootstrap.Modal.getOrCreateInstance(quickdrawModalEl);
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     if (!modal) {
       console.error('Could not get or create instance of quickdrawModal');
       return;
@@ -95,6 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.show();
 
     const quickdrawButton = document.getElementById('quickdrawButton');
+    const quickdrawText   = document.getElementById('quickdrawText');
     let timer;
     let startTime;
     let gameStarted = false;
@@ -107,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         quickdrawButton.classList.remove('btn-primary');
         quickdrawButton.classList.add('btn-danger');
-        quickdrawButton.textContent = 'Click when the button turns green';
+        quickdrawButton.textContent = 'Click when the button turns green.';
 
         timer = setTimeout(turnGreen, delay)
 
@@ -116,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         quickdrawButton.classList.remove('btn-danger');
         quickdrawButton.classList.add('btn-warning');
-        quickdrawButton.textContent = 'Too soon! Wait until the button turns green';
+        quickdrawButton.textContent = 'Too soon! Wait until the button turns green.';
 
         timer = setTimeout(turnGreen, delay);
 
@@ -124,7 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
         reactionTime = Date.now() - startTime;
 
         quickdrawButton.disabled    = true;
-        quickdrawButton.textContent = `You took ${reactionTime}ms to click`;
+        quickdrawButton.textContent = `You took ${reactionTime}ms to click.`;
+        
+        quickdrawText.textContent = 'Waiting for your friend\'s reaction time...'
 
         socket.emit('submit-quickdraw-score', {
           groupId : currentGroupId,
