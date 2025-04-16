@@ -15,7 +15,7 @@ services:
     ports:
       - "6379:6379"
 
-  web1:
+  web:
     image: node:lts
     working_dir: /repository
     env_file: .env
@@ -25,24 +25,7 @@ services:
       - db
       - redis
     ports:
-      - '3001:3000'
-    volumes:
-      - .:/repository:cached
-    command: 'npm start'
-
-  web2:
-    image: node:lts
-    working_dir: /repository
-    env_file: .env
-    environment:
-      - NODE_ENV=development
-    depends_on:
-      - db
-      - redis
-    ports:
-
-      - '3002:3000'
-
+      - '80:3000'
     volumes:
       - .:/repository:cached
     command: 'npm start'
