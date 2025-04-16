@@ -666,7 +666,7 @@ io.on('connection', async (socket) => {
     }
   });
 
-  socket.on('invite-user-by-username', async ({ username, groupId, lat, lng, types }) => {
+  socket.on('invite-user-by-username', async ({ username, groupId, userId, lat, lng, types }) => {
     console.log('📨 Received invite-user-by-username event for:', username);
     console.log(`📤 Sending invite with types:`, types);
 
@@ -684,6 +684,8 @@ io.on('connection', async (socket) => {
         activeSessions.get(groupId).types = types;
       }
 
+      activeSessions.get(groupId).users.add(userId);
+      activeSessions.get(groupId).ready.add(userId);
 
       for (let i = 0; i < 20; i++) {
         const sockets = await io.in(room).fetchSockets();
@@ -831,6 +833,27 @@ io.on('connection', async (socket) => {
       }
     } catch (err) {
       console.error('❌ Error handling swipe:', err);
+    }
+  });
+
+  socket.on('request-game-start', ({ groupId, userId, gameName }) => {
+    const session = activeSessions.get(groupId);
+    if (!session) return;
+
+    session.readyForGame = new Set();
+    session.readyForGame.add(userId);
+
+    io.to(`group-${groupId}`).emit('game-invite', { gameName });
+  });
+
+  socket.on('accept-game-invite', ({ groupId, userId, gameName }) => {
+    const session = activeSessions.get(groupId);
+    if (!session) return;
+
+    session.readyForGame.add(userId);
+
+    if (session.readyForGame.size === session.users.size) {
+      io.to(`group-${groupId}`).emit('game-start', { gameName });
     }
   });
 

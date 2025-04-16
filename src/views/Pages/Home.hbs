@@ -383,6 +383,7 @@ socket.on('invite-user-to-session', ({ groupId, lat, lng, types }) => {
             socket.emit('invite-user-by-username', {
               username: friendUsername,
               groupId,
+              userId: {{user.user_id}},
               lat: geocodedLat,
               lng: geocodedLng,
               types: selectedTypes
@@ -939,5 +940,4 @@ function handleVote(liked) {
 window.initMap = initMap;
 
 </script>
-<script text="text/javascript" src="/js/minigames.js"></script>
 {{/layout}}
