@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let selectedGameName;
 
+  const userId = sessionStorage.getItem('userId');
+
   // 'minigame name' => minigameFunction
   const minigames = new Map([
     ['quickdraw', quickdraw]
@@ -29,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.emit('request-game-start', {
       groupId  : currentGroupId,
-      userId   : sessionStorage.getItem('userId'),
+      userId   : userId,
       gameName : selection.value
     });
 
@@ -43,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.emit('accept-game-invite', {
       groupId  : currentGroupId,
-      userId   : sessionStorage.getItem('userId'),
+      userId   : userId,
       gameName : selectedGameName
     });
   });
@@ -68,6 +70,14 @@ document.addEventListener('DOMContentLoaded', () => {
     overlay.classList.add('d-none');
 
     minigames.get(gameName)();
+  });
+
+  socket.on('game-results', ({ loserId }) => {
+    if (userId == loserId) {
+      console.log('You lost!');
+    } else {
+      console.log('You won!');
+    }
   });
 
   function quickdraw() {
@@ -115,6 +125,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         quickdrawButton.disabled    = true;
         quickdrawButton.textContent = `You took ${reactionTime}ms to click`;
+
+        socket.emit('submit-quickdraw-score', {
+          groupId : currentGroupId,
+          userId  : userId,
+          score   : reactionTime
+        });
       }
     });
 
