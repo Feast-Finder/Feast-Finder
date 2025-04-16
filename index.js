@@ -8,7 +8,7 @@ const { Server } = require('socket.io');
 const io = new Server(http);
 const { createAdapter } = require('@socket.io/redis-adapter');
 const { createClient } = require('ioredis');
-
+const moment = require('moment');
 const pubClient = createClient({ host: 'redis', port: 6379 });
 const subClient = pubClient.duplicate();
 
@@ -32,6 +32,9 @@ const activeSessions = new Map(); // { groupId: { users: Set, ready: Set } }
 
 Handlebars.registerHelper('charAt', function (str, index) {
   return str && str.charAt(index);
+});
+Handlebars.registerHelper('formatDate', function (datetime, format) {
+  return datetime ? moment(datetime).format(format) : '';
 });
 
 // *****************************************************
@@ -103,17 +106,40 @@ app.post('/check-username', async (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
-  if (req.body.password !== req.body.confirmPassword) {
+  const { username, password, confirmPassword, email, phone } = req.body;
+
+  if (password !== confirmPassword) {
     return res.render('Pages/register', { message: 'Passwords do not match' });
   }
-  const hash = await bcrypt.hash(req.body.password, 10);
+
   try {
-    await db.none(`INSERT INTO users (username, password_hash) VALUES ($1, $2)`, [req.body.username, hash]);
-    req.session.user = req.body.username;
-    req.session.save(() => res.redirect('/login'));
+    const hash = await bcrypt.hash(password, 10);
+
+    // Insert new user
+    const newUser = await db.one(`
+      INSERT INTO Users (username, password_hash, email, phone)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [username, hash, email || null, phone || null]);
+
+    // Insert into user_preferences with default blank values
+    await db.none(`
+      INSERT INTO user_preferences (user_id, cuisines, dietary, price_range)
+      VALUES ($1, ARRAY[]::TEXT[], ARRAY[]::TEXT[], 'any')
+    `, [newUser.user_id]);
+
+    // Set session and mark active
+    req.session.user = newUser;
+
+    await db.none(`
+      UPDATE Users SET active = TRUE, last_active_at = CURRENT_TIMESTAMP
+      WHERE user_id = $1
+    `, [newUser.user_id]);
+
+    req.session.save(() => res.redirect('/home'));
   } catch (err) {
-    console.log(err);
-    res.redirect('/register');
+    console.error(err);
+    res.render('Pages/register', { message: 'Registration failed. Username/email might already be taken.' });
   }
 });
 
@@ -231,7 +257,65 @@ app.get('/home', async (req, res) => {
 });
 
 
-app.get('/profile', (req, res) => res.render('Pages/Profile'));
+app.get('/profile', async (req, res) => {
+  try {
+    const currentUser = req.session.user;
+    if (!currentUser) return res.redirect('/login');
+
+    const userId = currentUser.user_id;
+
+    const user = await db.oneOrNone(`SELECT * FROM users WHERE user_id = $1`, [userId]);
+    const preferences = await db.oneOrNone(`SELECT * FROM user_preferences WHERE user_id = $1`, [userId]);
+
+    const userHistory = await db.any(`
+      SELECT h.*, r.name AS restaurant_name
+      FROM UserMatchHistory h
+      JOIN Restaurants r ON h.restaurant_id = r.restaurant_id
+      WHERE h.user_id = $1
+      ORDER BY h.matched_at DESC
+      LIMIT 10
+    `, [userId]);
+
+
+    const matchStats = await db.one(`
+      SELECT COUNT(*) AS total
+      FROM UserMatchHistory
+      WHERE user_id = $1 AND matched_with != 'Solo'
+    `, [userId]);
+
+    const topFriends = await db.any(`
+      SELECT matched_with, COUNT(*) as count
+      FROM UserMatchHistory
+      WHERE user_id = $1 AND matched_with != 'Solo'
+      GROUP BY matched_with
+      ORDER BY count DESC
+      LIMIT 3
+    `, [userId]);
+    const timelineData = await db.any(`
+      SELECT h.*, r.name
+      FROM UserMatchHistory h
+      JOIN Restaurants r ON h.restaurant_id = r.restaurant_id
+      WHERE h.user_id = $1
+      ORDER BY h.matched_at DESC
+      LIMIT 10
+    `, [userId]);
+
+
+
+    res.render('Pages/Profile', {
+      user: currentUser,
+      history: userHistory,
+      matchStats,
+      topFriends,
+      timelineData // 👈 add this
+    });
+
+  } catch (err) {
+    console.error('Error loading profile:', err);
+    res.status(500).send('Server error');
+  }
+});
+
 
 app.get('/friends', async (req, res) => {
   try {
@@ -431,6 +515,24 @@ app.get('/users/:userid', async (req, res) => {
 
 
 
+app.delete('/profile/delete', async (req, res) => {
+  try {
+    if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const userId = req.session.user.user_id;
+
+    // Delete user from the database
+    await db.none('DELETE FROM Users WHERE user_id = $1', [userId]);
+
+    // Optionally: delete any related data (FK ON DELETE CASCADE can help)
+    req.session.destroy(); // Clear the session
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Delete account error:", err);
+    res.status(500).json({ error: 'Something went wrong while deleting your account.' });
+  }
+});
 
 
 app.post('/groups', async (req, res) => {
@@ -463,126 +565,161 @@ app.post('/groups', async (req, res) => {
   }
 });
 
-const Busboy = require('busboy');
-const fs = require('fs');
 
+
+
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+const busboy = require('busboy');
 
 app.post('/profile/upload', (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
-
-  const busboy = Busboy({ headers: req.headers });
-  const userId = req.session.user.user_id;
-
-  let filePath = '';
-  let savePath = '';
-  let responseSent = false;
-
-  busboy.on('file', (fieldname, file, { filename, encoding, mimeType }) => {
-    console.log('File received:');
-    console.log('filename:', filename);
-    console.log('mimeType:', mimeType);
-
-    if (!filename) {
-      file.resume();
-      if (!responseSent) {
-        res.status(400).json({ error: 'No filename' });
-        responseSent = true;
-      }
-      return;
-    }
-
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(mimeType)) {
-      file.resume();
-      if (!responseSent) {
-        res.status(400).json({ error: 'Invalid file type' });
-        responseSent = true;
-      }
-      return;
-    }
-
-    const ext = path.extname(filename).toLowerCase();
-    const newFilename = `user_${userId}${ext}`;
-    filePath = `/uploads/${newFilename}`;
-    savePath = path.join(__dirname, 'public', filePath);
-
-    // Ensure the uploads directory exists
-    const uploadsDir = path.join(__dirname, 'public', 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
-    console.log('📦 Saving to:', savePath);
-    const writeStream = fs.createWriteStream(savePath);
-    file.pipe(writeStream);
-  });
-
-  busboy.on('finish', async () => {
-    if (responseSent) return;
-
-    if (!filePath) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-
-    try {
-      await db.none(`UPDATE users SET profile_picture_url = $1 WHERE user_id = $2`, [filePath, userId]);
-      req.session.user.profile_picture_url = filePath;
-      res.json({ profile_picture_url: filePath });
-    } catch (err) {
-      console.error('DB error:', err);
-      res.status(500).json({ error: 'Failed to save profile picture' });
-    }
-  });
-
-  req.pipe(busboy);
-});
-
-app.post('/profile/update', async (req, res) => {
   const userId = req.session.user?.user_id;
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { email, currentPassword, newPassword, confirmNewPassword } = req.body;
+  const bb = busboy({ headers: req.headers });
+
+  let filePath = '';
+  let fileName = '';
+  let oldPictureUrl = '';
+
+  // 1. Get existing profile picture
+  db.oneOrNone('SELECT profile_picture_url FROM users WHERE user_id = $1', [userId])
+    .then(user => {
+      oldPictureUrl = user?.profile_picture_url || '';
+
+      bb.on('file', (name, file, info) => {
+        const { filename, mimeType } = info;
+        const ext = path.extname(filename);
+        fileName = `${uuidv4()}${ext}`;
+        filePath = path.join(__dirname, 'public', 'uploads', fileName);
+
+        const writeStream = fs.createWriteStream(filePath);
+        file.pipe(writeStream);
+      });
+
+      bb.on('finish', async () => {
+        try {
+          const dbPath = `/uploads/${fileName}`;
+          await db.none('UPDATE users SET profile_picture_url = $1 WHERE user_id = $2', [dbPath, userId]);
+
+          // 2. Delete old picture from filesystem
+          if (oldPictureUrl && oldPictureUrl.startsWith('/uploads/')) {
+            const oldPath = path.join(__dirname, 'public', oldPictureUrl);
+            fs.unlink(oldPath, err => {
+              if (err && err.code !== 'ENOENT') console.error('Error deleting old image:', err);
+            });
+          }
+
+          res.json({ profile_picture_url: dbPath });
+        } catch (err) {
+          console.error('Upload error:', err);
+          res.status(500).json({ error: 'Failed to upload image' });
+        }
+      });
+
+      req.pipe(bb);
+    })
+    .catch(err => {
+      console.error('DB error:', err);
+      res.status(500).json({ error: 'Failed to check old image' });
+    });
+});
+
+app.get('/profile/match-stats', async (req, res) => {
+  const userId = req.session.user?.user_id;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
-    const user = await db.oneOrNone(`SELECT * FROM users WHERE user_id = $1`, [userId]);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const stats = await db.one(`
+      SELECT 
+        COUNT(*) AS total_matches,
+        COUNT(*) FILTER (WHERE group_name IS NULL) AS solo_matches,
+        COUNT(*) FILTER (WHERE group_name IS NOT NULL) AS group_matches,
+        MAX(matched_at) AS last_matched
+      FROM UserMatchHistory
+      WHERE user_id = $1
+    `, [userId]);
 
-    // 1. Update email (if changed)
-    if (email && email !== user.email) {
-      await db.none(`UPDATE users SET email = $1 WHERE user_id = $2`, [email, userId]);
-      req.session.user.email = email;
+    res.json(stats);
+  } catch (err) {
+    console.error('Error fetching match stats:', err);
+    res.status(500).json({ error: 'Failed to fetch match stats' });
+  }
+});
+
+
+app.post('/profile/update', async (req, res) => {
+  const { email, phone, currentPassword, newPassword, confirmNewPassword } = req.body;
+  const userId = req.session.user?.user_id;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    // Validate phone format if provided
+    if (phone && !/^\+?\d{10,15}$/.test(phone)) {
+      return res.status(400).json({ error: 'Invalid phone number format' });
     }
 
-    // 2. Handle password update
+    // Start update payload
+    const updates = [];
+    const values = [];
+    let idx = 1;
+
+    if (email) {
+      updates.push(`email = $${idx++}`);
+      values.push(email);
+    }
+
+    if (phone) {
+      updates.push(`phone = $${idx++}`);
+      values.push(phone);
+    }
+
+    // If user is trying to change password
     if (newPassword || confirmNewPassword || currentPassword) {
       if (!currentPassword || !newPassword || !confirmNewPassword) {
-        return res.status(400).json({ error: 'All password fields are required' });
+        return res.status(400).json({ error: 'All password fields are required to change your password' });
       }
 
-      const match = await bcrypt.compare(currentPassword, user.password_hash);
-      if (!match) {
-        return res.status(403).json({ error: 'Current password is incorrect' });
+      if (newPassword === currentPassword) {
+        return res.status(400).json({ error: 'New password must be different from current password' });
       }
 
       if (newPassword !== confirmNewPassword) {
         return res.status(400).json({ error: 'New passwords do not match' });
       }
 
-      const isSamePassword = await bcrypt.compare(newPassword, user.password_hash);
-      if (isSamePassword) {
-        return res.status(400).json({ error: 'New password cannot be the same as the current password' });
+      // Fetch current hashed password
+      const existing = await db.one('SELECT hashed_password FROM users WHERE user_id = $1', [userId]);
+      const match = await bcrypt.compare(currentPassword, existing.hashed_password);
+
+      if (!match) {
+        return res.status(400).json({ error: 'Current password is incorrect' });
       }
 
-      const hashed = await bcrypt.hash(newPassword, 10);
-      await db.none(`UPDATE users SET password_hash = $1 WHERE user_id = $2`, [hashed, userId]);
+      const hashed = await bcrypt.hash(newPassword, 12);
+      updates.push(`hashed_password = $${idx++}`);
+      values.push(hashed);
     }
 
-    return res.json({ success: true });
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields provided to update' });
+    }
+
+    values.push(userId);
+    const updateQuery = `UPDATE users SET ${updates.join(', ')} WHERE user_id = $${idx}`;
+    await db.none(updateQuery, values);
+
+    res.json({ success: true });
   } catch (err) {
-    console.error('Error updating profile:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Update error:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
+
+
 
 const router = express.Router();
 
