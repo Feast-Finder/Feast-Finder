@@ -18,11 +18,11 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H 20.3.255.58 >> ~/.ssh/known_hosts
+          ssh-keyscan -H 4.150.189.119 >> ~/.ssh/known_hosts
 
       - name: Trigger git pull on server
         run: |
-          ssh feast@20.3.255.58 <<EOF
+          ssh feast@4.150.189.119 <<EOF
             cd /home/feast/Feast-Finder
             git pull origin main
             sudo docker compose down
