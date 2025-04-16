@@ -25,6 +25,6 @@ jobs:
           ssh feast@${{ secrets.SERVER_IP }} <<EOF
             cd /home/feast/Feast-Finder
             git pull origin main
-            sudo docker compose down
-            sudo docker compose up -d
+            docker compose down
+            docker compose up -d
           EOF
