@@ -26,6 +26,26 @@
   </div>
 </div>
 
+<div id="gameWaitingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-75 text-white fw-bold fs-4 d-none" style="z-index: 1050;">
+  Waiting on your friend to accept the game invite...
+</div>
+
+<div class="modal fade" id="gameInviteModal" tabindex="-1" aria-labelledby="gameInviteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="gameInviteModalLabel">Game Invite</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="joinGameBtn" data-bs-dismiss="modal">Join Game</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="quickdrawModal" tabindex="-1" aria-labelledby="quickdrawModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -45,3 +65,8 @@
     </div>
   </div>
 </div>
+
+<script text="text/javascript">
+sessionStorage.setItem('userId', {{user.user_id}});
+</script>
+<script text="text/javascript" src="/js/minigames.js"></script>

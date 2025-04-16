@@ -1,24 +1,73 @@
 // Should be included in /home
 
 document.addEventListener('DOMContentLoaded', () => {
+  const overlay   = document.getElementById('gameWaitingOverlay');
+
+  let selectedGameName;
+
+  // 'minigame name' => minigameFunction
+  const minigames = new Map([
+    ['quickdraw', quickdraw]
+  ]);
+
+  function hideAllModals() {
+    Array.from(document.getElementsByClassName('modal')).forEach((m) => {
+      bootstrap.Modal.getInstance(m)?.hide();
+    });
+  }
+
   document.getElementById('startGameBtn').addEventListener('click', () => {
     const modal     = bootstrap.Modal.getInstance(document.getElementById('startGameModal'));
     const form      = document.getElementById('gameForm');
     const selection = form.querySelector('#gameSelection');
 
-    let gameFn;
-    switch (selection.value) {
-      case 'quickdraw':
-        gameFn = quickdraw;
-        break;
-    }
-
-    if (gameFn) {
-      modal.hide();
-      gameFn();
-    } else {
+    if (!minigames.has(selection.value)) {
       console.error('Please select a game');
     }
+
+    selectedGameName = selection.value;
+
+    socket.emit('request-game-start', {
+      groupId  : currentGroupId,
+      userId   : sessionStorage.getItem('userId'),
+      gameName : selection.value
+    });
+
+    modal.hide();
+    overlay.classList.remove('d-none');
+  });
+
+  document.getElementById('joinGameBtn').addEventListener('click', () => {
+    hideAllModals();
+    overlay.classList.remove('d-none');
+
+    socket.emit('accept-game-invite', {
+      groupId  : currentGroupId,
+      userId   : sessionStorage.getItem('userId'),
+      gameName : selectedGameName
+    });
+  });
+
+  socket.on('game-invite', ({ gameName }) => {
+    if (!selectedGameName) {
+      const modalEl = document.getElementById('gameInviteModal');
+      const modal   = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+      hideAllModals();
+
+      const body = modalEl.getElementsByClassName('modal-body')[0];
+      body.textContent = `A friend invited you to play ${gameName}`;
+      modal.show();
+
+      selectedGameName = gameName;
+    }
+  });
+
+  socket.on('game-start', ({ gameName }) => {
+    hideAllModals();
+    overlay.classList.add('d-none');
+
+    minigames.get(gameName)();
   });
 
   function quickdraw() {
