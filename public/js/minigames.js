@@ -130,6 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         timer = setTimeout(turnGreen, delay);
 
+      } else if (quickdrawButton.classList.contains('btn-warning')) {
+        clearTimeout(timer);
+        quickdrawButton.textContent = 'Wait for green!';
+        timer = setTimeout(turnGreen, delay);
+
       } else {
         reactionTime = Date.now() - startTime;
 
