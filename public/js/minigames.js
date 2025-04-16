@@ -95,14 +95,7 @@ document.getElementById('minigameAddFriendBtn').addEventListener('click', async 
   }
 });
 
-// --------------------
-// HOT POTATO GAME CODE
-// --------------------
-
-// This function initializes the Hot Potato game for minigame1.
-// It connects via Socket.IO, joins the current group (using currentGroup._id), and sets up event listeners.
 function initHotPotato() {
-  // Ensure currentGroup exists and that Socket.IO is available.
   if (!currentGroup || !currentGroup._id) {
     console.error('Group data missing. Cannot initialize hot potato game.');
     return;
@@ -110,19 +103,13 @@ function initHotPotato() {
 
   const groupId = currentGroup._id;
 
-  // Connect to the Socket.IO server (assumes the client script is loaded in the template).
   const socket = io();
-
-  // For demonstration, we'll use a prompt for the username.
   const username = prompt("Enter your username for Hot Potato:") || ("Player" + Math.floor(Math.random() * 1000));
 
-  // Join the game room.
   socket.emit('joinGame', { groupId, username });
 
-  // Initially hide the Pass Potato button.
   document.getElementById('passPotatoBtn').style.display = 'none';
 
-  // Update players list in the Hot Potato game UI.
   socket.on('updatePlayers', (players) => {
     const container = document.getElementById('playersContainer');
     container.innerHTML = '';
@@ -137,8 +124,6 @@ function initHotPotato() {
       container.appendChild(playerDiv);
     });
   });
-
-  // Update which player holds the potato.
   socket.on('potatoUpdate', (data) => {
     const { potatoHolder } = data;
     const players = document.getElementsByClassName('player');
@@ -149,12 +134,9 @@ function initHotPotato() {
         p.classList.remove('has-potato');
       }
     }
-    // Enable the pass button only if you are the potato holder.
     const passBtn = document.getElementById('passPotatoBtn');
     passBtn.disabled = (socket.id !== potatoHolder);
   });
-
-  // Handle game-over event.
   socket.on('gameOver', (data) => {
     const { loser } = data;
     const players = document.getElementsByClassName('player');
@@ -169,21 +151,12 @@ function initHotPotato() {
     document.getElementById('gameStatus').textContent = `Game Over! ${loserName} has lost.`;
     document.getElementById('passPotatoBtn').disabled = true;
   });
-
-  // --- MODIFIED SECTION ---
-
-  // Start game button inside hot potato modal.
   document.getElementById('startHotPotatoBtn').addEventListener('click', () => {
-    // Immediately start the game by emitting the event.
     socket.emit('startGame', groupId);
 
-    // Reveal the Pass Potato button once the game has started.
     document.getElementById('passPotatoBtn').style.display = 'inline-block';
   });
-
-  // Pass potato button event handler.
   document.getElementById('passPotatoBtn').addEventListener('click', () => {
-    // Pass the potato to a random other player.
     const players = Array.from(document.getElementsByClassName('player'));
     const otherPlayers = players.filter(p => p.id !== socket.id);
     if (otherPlayers.length === 0) return;
