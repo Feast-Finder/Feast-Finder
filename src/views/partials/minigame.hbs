@@ -13,6 +13,7 @@
             <select id="gameSelection" class="form-select" required>
               <option value="">Select a Minigame</option>
               <option value="quickdraw">Quickdraw</option>
+              <option value="hot potato">Hot Potato</option>
             </select>
           </div>
         </form>
@@ -30,6 +31,7 @@
   Waiting on your friend to accept the game invite...
 </div>
 
+<!-- Game Invite Modal -->
 <div class="modal fade" id="gameInviteModal" tabindex="-1" aria-labelledby="gameInviteModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -46,6 +48,7 @@
   </div>
 </div>
 
+<!-- Quickdraw Game -->
 <div class="modal fade" id="quickdrawModal" tabindex="-1" aria-labelledby="quickdrawModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -62,6 +65,38 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         <button type="button" class="btn btn-primary" id="quickdrawDoneBtn">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Integrated Hot Potato Game -->
+<div class="modal fade" id="minigameModal1" tabindex="-1" aria-labelledby="minigame1ModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg"><!-- enlarged dialog for game UI -->
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="minigame1ModalLabel">Hot Potato</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Hot Potato Game UI -->
+        <div id="hotPotatoGame" class="game-container">
+          <div id="playersContainer">
+            <!-- Player avatars and usernames will be rendered here -->
+          </div>
+          <div id="potatoContainer">
+            <!-- Hot Potato Image (placeholder) -->
+            <img id="potatoImage" src="../public/uploads/potato.png">
+          </div>
+          <div id="controls">
+            <button id="startHotPotatoBtn">Start Game</button>
+            <button id="passPotatoBtn" style="display:none;" disabled>Pass Potato</button> <!-- Added inline style to hide initially -->
+          </div>
+          <div id="gameStatus"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel Game</button>
       </div>
     </div>
   </div>
