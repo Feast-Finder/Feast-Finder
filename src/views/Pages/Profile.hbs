@@ -1,4 +1,64 @@
 {{#> layout name="main" }}
+<style>
+  .timeline li::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -7px;
+    width: 14px;
+    height: 14px;
+    background-color: #0d6efd;
+    border-radius: 50%;
+  }
+
+  .timeline {
+    position: relative;
+    margin-left: 1rem;
+    border-left: 3px solid #dee2e6;
+    padding-left: 1rem;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 0;
+    bottom: 0;
+    width: 12px;
+    background-color: white;
+    border: 3px solid #0d6efd;
+    border-radius: 50%;
+    margin-top: 8px;
+  }
+
+  .timeline-item {
+    position: relative;
+    padding: 1rem 1rem 1rem 2rem;
+    margin-bottom: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+  }
+
+  .timeline-item:hover {
+    background-color: #e9f2ff;
+    transform: translateY(-2px);
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1.3rem;
+    top: 1.25rem;
+    width: 12px;
+    height: 12px;
+    background-color: #0d6efd;
+    border-radius: 50%;
+    border: 2px solid white;
+  }
+</style>
+
 <div class="container py-4">
   <div class="row">
     <div class="col-lg-8 mx-auto">
@@ -29,7 +89,15 @@
             </div>
 
             <h3 class="mt-3">{{#if user}}{{user.username}}{{else}}Username{{/if}}</h3>
-            <p class="text-muted">Member since {{#if user}}{{user.created_at}}{{else}}March 2025{{/if}}</p>
+            <p class="text-muted">
+              Member since
+              {{#if user.created_at}}
+              {{formatDate user.created_at "MMMM YYYY"}}
+              {{else}}
+              -
+              {{/if}}
+            </p>
+
           </div>
 
           <!-- Profile Tabs -->
@@ -50,96 +118,104 @@
           </ul>
 
           <div class="tab-content p-3" id="profileTabsContent">
-<!-- Food Preferences Tab -->
-<div class="tab-pane fade show active" id="preferences" role="tabpanel" aria-labelledby="preferences-tab">
-  <form id="preferencesForm">
-    <h5 class="mb-3">Your Food Preferences</h5>
+            <!-- Food Preferences Tab -->
+            <div class="tab-pane fade show active" id="preferences" role="tabpanel" aria-labelledby="preferences-tab">
+              <form id="preferencesForm">
+                <h5 class="mb-3">Your Food Preferences</h5>
 
-    <div class="mb-3">
-      <label class="form-label">Cuisine Types</label>
-      <div class="row">
-        {{! All inputs have disabled attribute initially }}
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="italian" name="cuisine" value="italian" checked disabled>
-            <label class="form-check-label" for="italian">Italian</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="mexican" name="cuisine" value="mexican" checked disabled>
-            <label class="form-check-label" for="mexican">Mexican</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="chinese" name="cuisine" value="chinese" checked disabled>
-            <label class="form-check-label" for="chinese">Chinese</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="indian" name="cuisine" value="indian" disabled>
-            <label class="form-check-label" for="indian">Indian</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="fastfood" name="cuisine" value="fastfood" disabled>
-            <label class="form-check-label" for="fastfood">Fast Food</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="thai" name="cuisine" value="thai" disabled>
-            <label class="form-check-label" for="thai">Thai</label>
-          </div>
-        </div>
-      </div>
-    </div>
+                <div class="mb-3">
+                  <label class="form-label">Cuisine Types</label>
+                  <div class="row">
+                    {{! All inputs have disabled attribute initially }}
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="italian" name="cuisine" value="italian"
+                          checked disabled>
+                        <label class="form-check-label" for="italian">Italian</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="mexican" name="cuisine" value="mexican"
+                          checked disabled>
+                        <label class="form-check-label" for="mexican">Mexican</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="chinese" name="cuisine" value="chinese"
+                          checked disabled>
+                        <label class="form-check-label" for="chinese">Chinese</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="indian" name="cuisine" value="indian"
+                          disabled>
+                        <label class="form-check-label" for="indian">Indian</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="fastfood" name="cuisine" value="fastfood"
+                          disabled>
+                        <label class="form-check-label" for="fastfood">Fast Food</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="thai" name="cuisine" value="thai" disabled>
+                        <label class="form-check-label" for="thai">Thai</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-    <div class="mb-3">
-      <label class="form-label">Dietary Restrictions</label>
-      <div class="row">
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="vegetarian" name="diet" value="vegetarian" disabled>
-            <label class="form-check-label" for="vegetarian">Vegetarian</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="vegan" name="diet" value="vegan" disabled>
-            <label class="form-check-label" for="vegan">Vegan</label>
-          </div>
-        </div>
-        <div class="col-md-4 mb-2">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="glutenFree" name="diet" value="glutenFree" disabled>
-            <label class="form-check-label" for="glutenFree">Gluten-Free</label>
-          </div>
-        </div>
-      </div>
-    </div>
+                <div class="mb-3">
+                  <label class="form-label">Dietary Restrictions</label>
+                  <div class="row">
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="vegetarian" name="diet" value="vegetarian"
+                          disabled>
+                        <label class="form-check-label" for="vegetarian">Vegetarian</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="vegan" name="diet" value="vegan" disabled>
+                        <label class="form-check-label" for="vegan">Vegan</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="glutenFree" name="diet" value="glutenFree"
+                          disabled>
+                        <label class="form-check-label" for="glutenFree">Gluten-Free</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-    <div class="mb-3">
-      <label for="priceRange" class="form-label">Price Range</label>
-      <select class="form-select" id="priceRange" name="priceRange" disabled>
-        <option value="any">Any</option>
-        <option value="$">$ (Inexpensive)</option>
-        <option value="$$" selected>$$ (Moderate)</option>
-        <option value="$$$">$$$ (Expensive)</option>
-        <option value="$$$$">$$$$ (Very Expensive)</option>
-      </select>
-    </div>
+                <div class="mb-3">
+                  <label for="priceRange" class="form-label">Price Range</label>
+                  <select class="form-select" id="priceRange" name="priceRange" disabled>
+                    <option value="any">Any</option>
+                    <option value="$">$ (Inexpensive)</option>
+                    <option value="$$" selected>$$ (Moderate)</option>
+                    <option value="$$$">$$$ (Expensive)</option>
+                    <option value="$$$$">$$$$ (Very Expensive)</option>
+                  </select>
+                </div>
 
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-      <button type="button" id="editPreferencesBtn" class="btn btn-outline-secondary">Edit</button>
-      <button type="submit" id="savePreferencesBtn" class="btn btn-primary d-none">Save</button>
-    </div>
-  </form>
-</div>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                  <button type="button" id="editPreferencesBtn" class="btn btn-outline-secondary">Edit</button>
+                  <button type="submit" id="savePreferencesBtn" class="btn btn-primary d-none">Save</button>
+                </div>
+              </form>
+            </div>
 
+            <!-- Account Settings Tab -->
             <!-- Account Settings Tab -->
             <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
               <form id="accountForm">
@@ -153,6 +229,11 @@
                 <div class="mb-3">
                   <label for="email" class="form-label">Email</label>
                   <input type="email" class="form-control" id="email" value="{{user.email}}" disabled>
+                </div>
+
+                <div class="mb-3">
+                  <label for="phone" class="form-label">Phone Number</label>
+                  <input type="text" class="form-control" id="phone" value="{{user.phone}}" disabled>
                 </div>
 
                 <div id="passwordSection" class="d-none">
@@ -177,175 +258,329 @@
                   <button type="button" id="editAccountBtn" class="btn btn-outline-secondary">Edit</button>
                   <button type="submit" id="saveAccountBtn" class="btn btn-primary d-none">Save</button>
                 </div>
-              </form>
+                <hr class="my-4">
+                <div class="text-end">
+                  <button type="button" class="btn btn-danger" id="deleteAccountBtn">
+                    Delete My Account
+                  </button>
+                </div>
             </div>
+
+            </form>
+
+
+
 
 
             <!-- History Tab -->
+            <!-- History Tab -->
+
+            <!-- History Tab -->
             <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
-              <h5 class="mb-3">Your Recent Activity</h5>
+              <h5 class="mb-3">Match Stats</h5>
+              <ul class="list-group mb-4">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  Total Matches
+                  <span class="fw-bold">{{matchStats.total_matches}}</span>
+                </li>
+              </ul>
 
-              <div class="list-group">
-                <div class="list-group-item list-group-item-action">
-                  <div class="d-flex w-100 justify-content-between">
-                    <h6 class="mb-1">Matched with "Luigi's Italian Restaurant"</h6>
-                    <small class="text-muted">3 days ago</small>
+              <h5 class="mb-3">Top Matched Friends</h5>
+              {{#if topFriends.length}}
+              <ul class="list-group mb-4">
+                {{#each topFriends}}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <div class="d-flex align-items-center">
+                    {{#if this.profile_picture_url}}
+                    <img src="{{this.profile_picture_url}}" alt="{{this.matched_with}}'s avatar"
+                      class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;">
+                    {{else}}
+                    <div
+                      class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center me-3"
+                      style="width: 40px; height: 40px; font-weight: bold; text-transform: uppercase;">
+                      {{this.matched_with.[0]}}
+                    </div>
+                    {{/if}}
+
+                    <span class="fw-bold">{{this.matched_with}}</span>
                   </div>
-                  <p class="mb-1">Group session with JaneSmith, MikeJohnson</p>
+
+                  <span class="badge bg-primary rounded-pill">{{this.count}} match{{#unless (eq this.count
+                    1)}}es{{/unless}}</span>
+                </li>
+                {{/each}}
+              </ul>
+              {{else}}
+              <p class="text-muted mb-4">-</p>
+              {{/if}}
+
+
+              <h5 class="mb-3">Match Timeline</h5>
+              {{#if timeline.length}}
+              <div class="timeline list-group mb-3 fade show">
+                {{#each timeline}}
+                <div
+                  class="list-group-item list-group-item-action mb-2 border-start border-4 border-primary rounded shadow-sm fade show"
+                  style="animation: fadeIn 0.5s ease-in;">
+                  <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">Matched with "{{this.restaurant_name}}"</h6>
+                    <small class="text-muted">{{this.matched_at}}</small>
+                  </div>
+                  <p class="mb-1 text-muted">With: {{this.matched_with}}</p>
                 </div>
+                {{/each}}
+              </div>
+              {{else}}
+              <p class="text-muted">-</p>
+              {{/if}}
+            </div>
 
-                <div class="list-group-item list-group-item-action">
-                  <div class="d-flex w-100 justify-content-between">
-                    <h6 class="mb-1">Matched with "Taco Palace"</h6>
-                    <small class="text-muted">1 week ago</small>
-                  </div>
-                  <p class="mb-1">Group session with MikeJohnson</p>
-                </div>
+            <style>
+              .fade {
+                opacity: 0;
+                transition: opacity 0.1s ease-in-out;
+              }
 
-                <div class="list-group-item list-group-item-action">
-                  <div class="d-flex w-100 justify-content-between">
-                    <h6 class="mb-1">Matched with "Burger Joint"</h6>
-                    <small class="text-muted">2 weeks ago</small>
+              .fade.show {
+                opacity: 1;
+              }
+            </style>
+
+
+
+            <!-- Invitation Modal -->
+            <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel"
+              aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="inviteModalLabel">Swipe Session Invite</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                   </div>
-                  <p class="mb-1">Group session with JaneSmith, MikeJohnson, SarahLee</p>
+                  <div class="modal-body">
+                    A friend invited you to join a swiping session.
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="joinSwipeBtn">Join Swiping</button>
+                  </div>
                 </div>
               </div>
             </div>
+
+            <script src="/socket.io/socket.io.js"></script>
+            <script>
+              document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => {
+                const confirmed = confirm("Are you sure you want to permanently delete your account? This action cannot be undone.");
+
+                if (!confirmed) return;
+
+                try {
+                  const res = await fetch('/profile/delete', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                  });
+
+                  if (res.ok) {
+                    alert("Your account has been deleted.");
+                    window.location.href = '/'; // Redirect to homepage or goodbye page
+                  } else {
+                    const result = await res.json();
+                    alert(result.error || "Failed to delete account.");
+                  }
+                } catch (err) {
+                  console.error("Error deleting account:", err);
+                  alert("Server error. Please try again later.");
+                }
+              });
+
+              async function loadMatchStats() {
+                try {
+                  const res = await fetch('/profile/match-stats');
+                  const data = await res.json();
+
+                  document.getElementById('totalMatches').textContent = data.total_matches;
+                  document.getElementById('soloMatches').textContent = data.solo_matches;
+                  document.getElementById('groupMatches').textContent = data.group_matches;
+                  document.getElementById('lastMatched').textContent = data.last_matched
+                    ? new Date(data.last_matched).toLocaleDateString()
+                    : 'Never';
+                } catch (err) {
+                  console.error('Error loading match stats:', err);
+                }
+              }
+              document.addEventListener('DOMContentLoaded', async () => {
+                try {
+                  const res = await fetch('/profile/stats');
+                  const result = await res.json();
+
+                  // Set total match count
+                  const matchTotal = document.getElementById('matchTotal');
+                  if (matchTotal) matchTotal.textContent = result.totalMatches || '0';
+
+                  // Set top 3 friends
+                  const topList = ['topFriend1', 'topFriend2', 'topFriend3'];
+                  topList.forEach((id, index) => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = result.topFriends?.[index] || '-';
+                  });
+
+                } catch (err) {
+                  console.error('Error loading match stats:', err);
+                }
+              });
+
+              document.addEventListener('DOMContentLoaded', loadMatchStats);
+
+              document.getElementById('profileUpload').addEventListener('change', async function () {
+                const file = this.files[0];
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append('profile_picture', file); // NAME MUST MATCH server expectation
+
+                try {
+                  const res = await fetch('/profile/upload', {
+                    method: 'POST',
+                    body: formData
+                  });
+
+                  const result = await res.json();
+
+                  if (res.ok && result.profile_picture_url) {
+                    const profileImg = document.querySelector('.card-body img.rounded-circle');
+                    if (profileImg) {
+                      profileImg.src = `${result.profile_picture_url}?t=${Date.now()}`;
+                    }
+                  } else {
+                    console.error(result.error || 'Upload failed');
+                  }
+                } catch (err) {
+                  console.error('Upload error:', err);
+                }
+              });
+
+              document.getElementById('editAccountBtn').addEventListener('click', function () {
+                const emailInput = document.getElementById('email');
+                const phoneInput = document.getElementById('phone');
+                const passwordSection = document.getElementById('passwordSection');
+                const saveBtn = document.getElementById('saveAccountBtn');
+
+                emailInput.removeAttribute('disabled');
+                phoneInput.removeAttribute('disabled');
+                passwordSection.classList.remove('d-none');
+                this.classList.add('d-none');
+                saveBtn.classList.remove('d-none');
+              });
+
+              document.getElementById('accountForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const email = document.getElementById('email').value.trim();
+                const phone = document.getElementById('phone').value.trim();
+                const currentPassword = document.getElementById('currentPassword').value;
+                const newPassword = document.getElementById('newPassword').value;
+                const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+                // Optional phone number validation (US-style)
+                const phonePattern = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
+                if (phone && !phonePattern.test(phone)) {
+                  alert('Please enter a valid phone number (e.g. 123-456-7890)');
+                  return;
+                }
+
+                try {
+                  const res = await fetch('/profile/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      email,
+                      phone,
+                      currentPassword,
+                      newPassword,
+                      confirmNewPassword
+                    })
+                  });
+
+                  const result = await res.json();
+
+                  if (res.ok) {
+                    alert('Profile updated successfully!');
+                    document.getElementById('email').setAttribute('disabled', true);
+                    document.getElementById('phone').setAttribute('disabled', true);
+                    document.getElementById('passwordSection').classList.add('d-none');
+                    document.getElementById('saveAccountBtn').classList.add('d-none');
+                    document.getElementById('editAccountBtn').classList.remove('d-none');
+                    document.getElementById('accountForm').reset();
+                  } else {
+                    alert(result.error || 'Update failed.');
+                  }
+                } catch (err) {
+                  console.error(err);
+                  alert('Server error occurred.');
+                }
+              });
+
+              document.getElementById('editPreferencesBtn').addEventListener('click', function () {
+                const form = document.getElementById('preferencesForm');
+                const inputs = form.querySelectorAll('input, select');
+                const saveBtn = document.getElementById('savePreferencesBtn');
+
+                inputs.forEach(input => input.removeAttribute('disabled'));
+                this.classList.add('d-none');
+                saveBtn.classList.remove('d-none');
+              });
+
+              document.getElementById('preferencesForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const form = e.target;
+
+                const selectedCuisines = Array.from(form.querySelectorAll('input[name="cuisine"]:checked')).map(input => input.value);
+                const selectedDiet = Array.from(form.querySelectorAll('input[name="diet"]:checked')).map(input => input.value);
+                const priceRange = form.priceRange.value;
+
+                try {
+                  const res = await fetch('/profile/preferences', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      cuisines: selectedCuisines,
+                      dietary: selectedDiet,
+                      priceRange
+                    })
+                  });
+
+                  const result = await res.json();
+
+                  if (res.ok) {
+                    alert('Preferences updated!');
+                    const inputs = form.querySelectorAll('input, select');
+                    inputs.forEach(input => input.setAttribute('disabled', true));
+                    document.getElementById('savePreferencesBtn').classList.add('d-none');
+                    document.getElementById('editPreferencesBtn').classList.remove('d-none');
+                  } else {
+                    alert(result.error || 'Update failed.');
+                  }
+                } catch (err) {
+                  console.error(err);
+                  alert(' Server error.');
+                }
+              });
+
+              const socket = io();
+              const userId = {{ user.user_id }};
+              socket.emit('register-user', { userId });
+              socket.on('invite-user-to-session', ({ groupId }) => {
+                console.log('📩 Received invite for group:', groupId);
+                const inviteModal = new bootstrap.Modal(document.getElementById('inviteModal'));
+                inviteModal.show();
+
+                // Add click handler for the Join button
+                document.getElementById('joinSwipeBtn')?.addEventListener('click', () => {
+                  socket.emit('accept-session-invite', { groupId, userId });
+                });
+              });
+
+            </script>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <script>
-    document.getElementById('profileUpload').addEventListener('change', async function () {
-      const file = this.files[0];
-      if (!file) return;
-
-      const formData = new FormData();
-      formData.append('profile_picture', file); // NAME MUST MATCH server expectation
-
-      try {
-        const res = await fetch('/profile/upload', {
-          method: 'POST',
-          body: formData
-        });
-
-        const result = await res.json();
-
-        if (res.ok && result.profile_picture_url) {
-          const profileImg = document.querySelector('.card-body img.rounded-circle');
-          if (profileImg) {
-            profileImg.src = `${result.profile_picture_url}?t=${Date.now()}`;
-          }
-        } else {
-          console.error(result.error || 'Upload failed');
-        }
-      } catch (err) {
-        console.error('Upload error:', err);
-      }
-    });
-
-    document.getElementById('editAccountBtn').addEventListener('click', function () {
-      const emailInput = document.getElementById('email');
-      const passwordSection = document.getElementById('passwordSection');
-      const saveBtn = document.getElementById('saveAccountBtn');
-
-      emailInput.removeAttribute('disabled');
-      passwordSection.classList.remove('d-none');
-      this.classList.add('d-none');
-      saveBtn.classList.remove('d-none');
-    });
-
-    document.getElementById('accountForm').addEventListener('submit', async function (e) {
-      e.preventDefault();
-
-      const email = document.getElementById('email').value;
-      const currentPassword = document.getElementById('currentPassword').value;
-      const newPassword = document.getElementById('newPassword').value;
-      const confirmNewPassword = document.getElementById('confirmNewPassword').value;
-
-      try {
-        const res = await fetch('/profile/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email,
-            currentPassword,
-            newPassword,
-            confirmNewPassword
-          })
-        });
-
-        const result = await res.json();
-
-        if (res.ok) {
-          alert('Profile updated successfully!');
-
-          // Disable fields again
-          document.getElementById('email').setAttribute('disabled', true);
-          document.getElementById('passwordSection').classList.add('d-none');
-          document.getElementById('saveAccountBtn').classList.add('d-none');
-          document.getElementById('editAccountBtn').classList.remove('d-none');
-
-          // Optionally reset the form
-          document.getElementById('accountForm').reset();
-        } else {
-          alert(result.error || 'Update failed.');
-        }
-      } catch (err) {
-        console.error(err);
-        alert(' Server error occurred.');
-      }
-    });
-
-document.getElementById('editPreferencesBtn').addEventListener('click', function () {
-  const form = document.getElementById('preferencesForm');
-  const inputs = form.querySelectorAll('input, select');
-  const saveBtn = document.getElementById('savePreferencesBtn');
-
-  inputs.forEach(input => input.removeAttribute('disabled'));
-  this.classList.add('d-none');
-  saveBtn.classList.remove('d-none');
-});
-
-document.getElementById('preferencesForm').addEventListener('submit', async function (e) {
-  e.preventDefault();
-
-  const form = e.target;
-
-  const selectedCuisines = Array.from(form.querySelectorAll('input[name="cuisine"]:checked')).map(input => input.value);
-  const selectedDiet = Array.from(form.querySelectorAll('input[name="diet"]:checked')).map(input => input.value);
-  const priceRange = form.priceRange.value;
-
-  try {
-    const res = await fetch('/profile/preferences', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        cuisines: selectedCuisines,
-        dietary: selectedDiet,
-        priceRange
-      })
-    });
-
-    const result = await res.json();
-
-    if (res.ok) {
-      alert('Preferences updated!');
-      const inputs = form.querySelectorAll('input, select');
-      inputs.forEach(input => input.setAttribute('disabled', true));
-      document.getElementById('savePreferencesBtn').classList.add('d-none');
-      document.getElementById('editPreferencesBtn').classList.remove('d-none');
-    } else {
-      alert(result.error || 'Update failed.');
-    }
-  } catch (err) {
-    console.error(err);
-    alert(' Server error.');
-  }
-});
-
-
-  </script>
-</div>
-{{/layout}}
+          {{/layout}}

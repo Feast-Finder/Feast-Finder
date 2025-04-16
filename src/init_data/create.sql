@@ -2,24 +2,27 @@
 CREATE DATABASE feast_finder_db;
 
 CREATE TYPE swipe_direction_enum AS ENUM ('left', 'right');
-CREATE TABLE users (
+
+CREATE TABLE IF NOT EXISTS users (
+
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE,
+    phone VARCHAR(20) UNIQUE, --  New: Optional and must be unique
     password_hash VARCHAR(255), -- LATER IMPLEMENT HASHING bcrypt or argon
     location_latitude DECIMAL(10, 6),
     location_longitude DECIMAL(10, 6),
     active BOOLEAN DEFAULT TRUE,
     last_active_at TIMESTAMP WITH TIME ZONE,
-    profile_picture_url TEXT, -- ✅ New field added
+    profile_picture_url TEXT, --  Profile pic field
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-
 
 COMMENT ON TABLE users IS 'Stores information about users of the Feast Finder app.';
 COMMENT ON COLUMN users.user_id IS 'Unique identifier for each user.';
 COMMENT ON COLUMN users.username IS 'Username for login and display.';
 COMMENT ON COLUMN users.email IS 'User''s email address (optional).';
+COMMENT ON COLUMN users.phone IS 'User''s phone number (optional, used for searching or login).'; -- ✅ New
 COMMENT ON COLUMN users.password_hash IS 'Hashed password for secure authentication.';
 COMMENT ON COLUMN users.location_latitude IS 'User''s current latitude.';
 COMMENT ON COLUMN users.location_longitude IS 'User''s current longitude.';
@@ -36,11 +39,12 @@ CREATE TABLE IF NOT EXISTS Friends (
     user_id_1 INTEGER NOT NULL,
     user_id_2 INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (user_id_1, user_id_2), -- Prevent duplicate friendships
-    FOREIGN KEY (user_id_1) REFERENCES Users(user_id),
-    FOREIGN KEY (user_id_2) REFERENCES Users(user_id),
+    UNIQUE (user_id_1, user_id_2),
+    FOREIGN KEY (user_id_1) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id_2) REFERENCES Users(user_id) ON DELETE CASCADE,
     CHECK (user_id_1 < user_id_2)
 );
+
 
 COMMENT ON TABLE Friends IS 'Manages friend relationships between users.';
 COMMENT ON COLUMN Friends.friendship_id IS 'Unique identifier for each friendship.';
@@ -58,11 +62,12 @@ CREATE TABLE IF NOT EXISTS Groups (
     creator_user_id INTEGER NOT NULL,
     location_latitude DECIMAL(10, 6) NOT NULL,
     location_longitude DECIMAL(10, 6) NOT NULL,
-    max_distance INTEGER, -- Distance in miles or kilometers (specify in application logic)
-    excluded_cuisines JSONB, -- Using JSONB for efficient querying
+    max_distance INTEGER,
+    excluded_cuisines JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (creator_user_id) REFERENCES Users(user_id)
+    FOREIGN KEY (creator_user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
+
 
 COMMENT ON TABLE Groups IS 'Stores information about each group created for finding a restaurant.';
 COMMENT ON COLUMN Groups.group_id IS 'Unique identifier for each group.';
@@ -82,10 +87,11 @@ CREATE TABLE IF NOT EXISTS GroupMembers (
     group_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (group_id, user_id), -- Ensure a user can't be added to the same group multiple times
-    FOREIGN KEY (group_id) REFERENCES Groups(group_id),
-    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+    UNIQUE (group_id, user_id),
+    FOREIGN KEY (group_id) REFERENCES Groups(group_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
+
 
 COMMENT ON TABLE GroupMembers IS 'Tracks which users are participating in which group.';
 COMMENT ON COLUMN GroupMembers.group_member_id IS 'Unique identifier for each group membership record.';
@@ -140,6 +146,7 @@ CREATE TABLE IF NOT EXISTS Swipes (
     FOREIGN KEY (user_id) REFERENCES Users(user_id),
     FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id),
     UNIQUE (group_id, user_id, restaurant_id)  -- ✅ This is what you need
+
 );
 
 
@@ -157,14 +164,15 @@ CREATE INDEX idx_swipes_user_id ON Swipes (user_id);
 CREATE INDEX idx_swipes_restaurant_id ON Swipes (restaurant_id);
 
 -- 7. Matches Table
-CREATE TABLE Matches (
+CREATE TABLE IF NOT EXISTS Matches (
     match_id SERIAL PRIMARY KEY,
     group_id INTEGER NOT NULL,
     restaurant_id INTEGER NOT NULL,
     matched_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (group_id) REFERENCES Groups(group_id),
-    FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id)
+    FOREIGN KEY (group_id) REFERENCES Groups(group_id) ON DELETE CASCADE,
+    FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id) ON DELETE CASCADE
 );
+
 
 COMMENT ON TABLE Matches IS 'Records when a group successfully matches with a restaurant.';
 COMMENT ON COLUMN Matches.match_id IS 'Unique identifier for each match.';
@@ -176,22 +184,23 @@ COMMENT ON COLUMN Matches.matched_at IS 'Timestamp when the match was determined
 
 CREATE TABLE user_preferences (
   user_id INTEGER PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
-  cuisines TEXT[],              
-  dietary TEXT[],               
-  price_range TEXT              
+  cuisines TEXT[],
+  dietary TEXT[],
+  price_range TEXT
 );
+
 
 CREATE TABLE IF NOT EXISTS UserMatchHistory (
     history_id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
-    matched_with TEXT NOT NULL, -- Comma-separated usernames or description like "Solo", "JaneDoe, MikeLee"
-    group_name TEXT,            -- Optional: could be null if solo
+    matched_with TEXT NOT NULL,
+    group_name TEXT,
     restaurant_id INTEGER NOT NULL,
     matched_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (user_id) REFERENCES Users(user_id),
-    FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id)
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (restaurant_id) REFERENCES Restaurants(restaurant_id) ON DELETE CASCADE
 );
+
 
 COMMENT ON TABLE UserMatchHistory IS 'Tracks the last 5 matches each user has seen.';
 COMMENT ON COLUMN UserMatchHistory.user_id IS 'The user this record is for.';
@@ -229,15 +238,16 @@ CREATE TABLE IF NOT EXISTS SwipeSessions (
     session_id SERIAL PRIMARY KEY,
     user_id_1 INTEGER NOT NULL,
     user_id_2 INTEGER NOT NULL,
-    status VARCHAR(20) DEFAULT 'waiting', -- waiting, active, complete
+    status VARCHAR(20) DEFAULT 'waiting',
     started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     ended_at TIMESTAMP WITH TIME ZONE,
-    group_id INTEGER, -- optional, if tied to a group swipe
-    FOREIGN KEY (user_id_1) REFERENCES Users(user_id),
-    FOREIGN KEY (user_id_2) REFERENCES Users(user_id),
-    FOREIGN KEY (group_id) REFERENCES Groups(group_id),
+    group_id INTEGER,
+    FOREIGN KEY (user_id_1) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id_2) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id) REFERENCES Groups(group_id) ON DELETE CASCADE,
     UNIQUE (user_id_1, user_id_2)
 );
+
 
 COMMENT ON TABLE SwipeSessions IS 'Tracks a swiping session between two friends.';
 COMMENT ON COLUMN SwipeSessions.session_id IS 'Unique identifier for the session.';

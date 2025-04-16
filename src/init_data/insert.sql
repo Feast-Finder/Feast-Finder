@@ -1,15 +1,15 @@
 -- Insert Users
-INSERT INTO users (username, email, password_hash, active, last_active_at) VALUES
-('alice', 'alice@example.com', 'hash1', TRUE, NULL),
-('bob', 'bob@example.com', 'hash2', FALSE, '2025-04-06 14:23:00+00'),
-('carol', 'carol@example.com', 'hash3', TRUE, NULL),
-('dave', 'dave@example.com', 'hash4', FALSE, '2025-04-05 09:15:00+00'),
-('eve', 'eve@example.com', 'hash5', TRUE, NULL),
-('frank', 'frank@example.com', 'hash6', FALSE, '2025-04-07 17:45:00+00'),
-('grace', 'grace@example.com', 'hash7', TRUE, NULL),
-('heidi', 'heidi@example.com', 'hash8', TRUE, NULL),
-('ivan', 'ivan@example.com', 'hash9', FALSE, '2025-04-03 20:00:00+00'),
-('judy', 'judy@example.com', 'hash10', TRUE, NULL);
+INSERT INTO users (username, email, phone, password_hash, active, last_active_at) VALUES
+('alice', 'alice@example.com', '123-456-7890', 'hash1', TRUE, NULL),
+('bob', 'bob@example.com', '234-567-8901', 'hash2', FALSE, '2025-04-06 14:23:00+00'),
+('carol', 'carol@example.com', '345-678-9012', 'hash3', TRUE, NULL),
+('dave', 'dave@example.com', '456-789-0123', 'hash4', FALSE, '2025-04-05 09:15:00+00'),
+('eve', 'eve@example.com', '567-890-1234', 'hash5', TRUE, NULL),
+('frank', 'frank@example.com', '678-901-2345', 'hash6', FALSE, '2025-04-07 17:45:00+00'),
+('grace', 'grace@example.com', '789-012-3456', 'hash7', TRUE, NULL),
+('heidi', 'heidi@example.com', '890-123-4567', 'hash8', TRUE, NULL),
+('ivan', 'ivan@example.com', '901-234-5678', 'hash9', FALSE, '2025-04-03 20:00:00+00'),
+('judy', 'judy@example.com', '012-345-6789', 'hash10', TRUE, NULL);
 
 
 
@@ -86,3 +86,15 @@ INSERT INTO Matches (group_id, restaurant_id) VALUES
 (10, 10),
 (3, 6),  
 (5, 8);  
+
+INSERT INTO user_preferences (user_id, cuisines, dietary, price_range) VALUES
+(1, ARRAY['italian', 'mexican'], ARRAY['vegetarian'], '$$'),
+(2, ARRAY['chinese', 'thai'], ARRAY['glutenFree'], '$'),
+(3, ARRAY['indian', 'fastfood'], ARRAY['vegan'], '$$$'),
+(4, ARRAY['mexican', 'thai'], ARRAY[]::TEXT[], '$'),
+(5, ARRAY['italian', 'fastfood', 'chinese'], ARRAY['glutenFree', 'vegan'], '$$'),
+(6, ARRAY['indian'], ARRAY['vegetarian'], '$$$'),
+(7, ARRAY['thai', 'mexican'], ARRAY[]::TEXT[], '$'),
+(8, ARRAY['chinese', 'italian'], ARRAY['vegan'], '$$'),
+(9, ARRAY['fastfood'], ARRAY['glutenFree'], '$'),
+(10, ARRAY['italian', 'indian', 'thai'], ARRAY[]::TEXT[], '$$$');

@@ -40,7 +40,9 @@ services:
       - db
       - redis
     ports:
+
       - '3002:3000'
+
     volumes:
       - .:/repository:cached
     command: 'npm start'
