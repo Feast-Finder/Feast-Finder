@@ -13,18 +13,52 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up SSH
+      - name: Init SSH agent
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
-      - name: Trigger git pull on server
+      - name: Pull changes and restart container if needed
         run: |
           ssh feast@${{ secrets.SERVER_IP }} <<EOF
             cd /home/feast/Feast-Finder
+
+            # Update the server codebase
             git pull origin main
-            docker compose down
-            docker compose up -d
+
+            # Get the current commit hash to determine if a restart is needed
+            if [ -f .latest_deployment ]; then
+              LATEST_DEPLOYMENT=$(cat .latest_deployment)
+            else
+              LATEST_DEPLOYMENT=$(git rev-list --max-parents=0 HEAD) # First commit
+            fi
+
+            # Get the staged commit hash
+            STAGED_DEPLOYMENT=$(git rev-parse HEAD)
+
+            # Compare the latest deployment with the staged deployment
+            CHANGED_FILES=$(git diff --name-only $LATEST_DEPLOYMENT $STAGED_DEPLOYMENT)
+
+            # Default to not restarting the containers
+            RESTART_CONTAINER=false
+
+            # Check what files have changed, and set RESTART_CONTAINER to true if necessary
+            # If Dockerfile, package.json, or src/ directory has changed, set RESTART_CONTAINER to true
+            if echo "$CHANGED_FILES" | grep -qE "docker-compose.yaml|package.json|src/(?!.*\.(html|hbs)$)|public/.env"; then
+              RESTART_CONTAINER=true
+            fi
+
+            # Restart containers
+            if [ "$RESTART_CONTAINER" = true ]; then
+              echo "Restarting containers..."
+              docker compose down
+              docker compose up -d
+
+              # Update the latest deployment hash
+              echo $STAGED_DEPLOYMENT > .latest_deployment
+            else
+              echo "Changes pull but no restart needed."
+            fi
           EOF
