@@ -52,6 +52,7 @@ jobs:
             # Check if there are any relevant changes
             RESTART_CONTAINER=true
             if [ -n "$FILTERED_FILES" ]; then
+                RESTART_CONTAINER=true
             fi
 
             # Restart containers
