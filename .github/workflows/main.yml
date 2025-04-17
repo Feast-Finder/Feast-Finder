@@ -13,64 +13,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Init SSH agent
+      - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.SERVER_IP }}" >> ~/.ssh/known_hosts
 
-      - name: Pull changes and restart container if needed
+      - name: Trigger git pull on server
         run: |
-          ssh feast@${{ secrets.SERVER_IP }} <<EOF
+          ssh feast@"${{ secrets.SERVER_IP }}" <<EOF
             cd /home/feast/Feast-Finder
-
-            # Update the server codebase
             git pull origin main
-
-            # Ensure .latest_deployment exists
-            if [ ! -f .latest_deployment ]; then
-              echo "No .latest_deployment file found. Initializing with the latest commit."
-              git rev-parse HEAD > .latest_deployment
-            fi
-
-            # Get the last deployed commit hash
-            LATEST_DEPLOYMENT=$(cat .latest_deployment)
-
-            # Get the latest commit hash
-            STAGED_DEPLOYMENT=$(git rev-parse HEAD)
-
-            # Compare the latest deployment with the staged deployment
-            CHANGED_FILES=$(git diff --name-only $LATEST_DEPLOYMENT $STAGED_DEPLOYMENT)
-
-            # Debug: Print all changed files
-            echo "Changed files:"
-            echo "$CHANGED_FILES"
-
-            # Default to not restarting the containers
-            RESTART_CONTAINER=false
-
-            # Filter changed files to include docker-compose.yaml and other relevant files
-            FILTERED_FILES=$(echo "$CHANGED_FILES" | grep -E "^(docker-compose.yaml|package.json|src/|public/.env)$" | grep -vE "\.html$|\.hbs$")
-
-            # Debug: Print filtered files
-            echo "Filtered files:"
-            echo "$FILTERED_FILES"
-
-            # Check if there are any relevant changes
-            if [ -n "$FILTERED_FILES" ]; then
-              RESTART_CONTAINER=true
-            fi
-
-            # Restart containers if needed
-            if [ "$RESTART_CONTAINER" = true ]; then
-              echo "Restarting containers..."
-              docker compose down
-              docker compose up -d
-
-              # Update the latest deployment hash
-              git rev-parse HEAD > .latest_deployment
-            else
-              echo "Changes pulled but no restart needed."
-            fi
+            sudo docker compose down
+            sudo docker compose up -d
           EOF
