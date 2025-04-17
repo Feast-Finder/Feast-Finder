@@ -41,11 +41,19 @@ jobs:
             # Compare the latest deployment with the staged deployment
             CHANGED_FILES=$(git diff --name-only $LATEST_DEPLOYMENT $STAGED_DEPLOYMENT)
 
+            # Debug: Print changed files
+            echo "Changed files:"
+            echo "$CHANGED_FILES"
+
             # Default to not restarting the containers
             RESTART_CONTAINER=false
 
             # Filter changed files to exclude .html and .hbs files
             FILTERED_FILES=$(echo "$CHANGED_FILES" | grep -E "docker-compose.yaml|package.json|src/|public/.env" | grep -vE "\.html$|\.hbs$")
+
+            # Debug: Print filtered files
+            echo "Filtered files:"
+            echo "$FILTERED_FILES"
 
             # Check if there are any relevant changes
             if [ -n "$FILTERED_FILES" ]; then
