@@ -8,11 +8,11 @@ const chai = require('chai'); // Chai HTTP provides an interface for live integr
 const chaiHttp = require('chai-http');
 chai.should();
 chai.use(chaiHttp);
-const {assert, expect} = chai;
+const { assert, expect } = chai;
 const bcryptjs = require('bcryptjs');
 const app = require('../index'); // or wherever your Express app is
-
-
+const http = require('http');
+const server = http.createServer(app);
 
 // ********************** DEFAULT WELCOME TESTCASE ****************************
 
@@ -41,18 +41,18 @@ describe('Server!', () => {
 // and expects the API to return a status of 200 along with the "Success" message.
 
 describe('Testing Add User API', () => {
-    it('positive : /register_test', done => {
-      chai
-        .request(server)
-        .post('/register_test')
-        .send({username: 'JohnDoe', password: '2020'})
-        .end((err, res) => {
-          expect(res).to.have.status(200);
-          expect(res.body.result).to.equals('Success');
-          done();
-        });
-    });
-  
+  it('positive : /register_test', done => {
+    chai
+      .request(server)
+      .post('/register_test')
+      .send({ username: 'JohnDoe', password: '2020' })
+      .end((err, res) => {
+        expect(res).to.have.status(200);
+        expect(res.body.result).to.equals('Success');
+        done();
+      });
+  });
+
   // Example Negative Testcase :
   // API: /add_user
   // Input: {id: 5, name: 10, dob: '2020-02-20'}
@@ -64,7 +64,7 @@ describe('Testing Add User API', () => {
     chai
       .request(server)
       .post('/register_test')
-      .send({username: 'alice', password: '2020'})
+      .send({ username: 'alice', password: '2020' })
       .end((err, res) => {
         expect(res).to.have.status(400);
         expect(res.body.result).to.equals('Username already exists');
@@ -88,6 +88,7 @@ describe('Friends Route Tests', () => {
       'INSERT INTO Users (username, password_hash) VALUES ($1, $2)',
       [testUser.username, hashedPassword]
     );
+    await server.listen(3000); // Start the server
   });
 
   beforeEach(() => {
@@ -100,6 +101,7 @@ describe('Friends Route Tests', () => {
 
   after(async () => {
     await db.query('TRUNCATE TABLE Friends, Users RESTART IDENTITY CASCADE');
+    await server.close(); // Stop the server
   });
 
   describe('GET /friends_test', () => {
@@ -113,17 +115,17 @@ describe('Friends Route Tests', () => {
           done();
         });
     });
-  
+
     it('should return user profile when authenticated', async () => {
       const agent = chai.request.agent(app);
       await agent.post('/login').send(testUser);
       const res = await agent.get('/friends_test');
-  
+
       expect(res.body).to.have.property('username', testUser.username);
       agent.close();
     });
   });
-  
+
 });
 
 // ********************************************************************************
