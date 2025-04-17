@@ -28,28 +28,30 @@ jobs:
             # Update the server codebase
             git pull origin main
 
-            # Get the current commit hash to determine if a restart is needed
-            if [ -f .latest_deployment ]; then
-              LATEST_DEPLOYMENT=$(cat .latest_deployment)
-            else
-              LATEST_DEPLOYMENT=$(git rev-list --max-parents=0 HEAD) # First commit
+            # Ensure .latest_deployment exists
+            if [ ! -f .latest_deployment ]; then
+              echo "No .latest_deployment file found. Initializing with the latest commit."
+              git rev-parse HEAD > .latest_deployment
             fi
 
-            # Get the staged commit hash
+            # Get the last deployed commit hash
+            LATEST_DEPLOYMENT=$(cat .latest_deployment)
+
+            # Get the latest commit hash
             STAGED_DEPLOYMENT=$(git rev-parse HEAD)
 
             # Compare the latest deployment with the staged deployment
             CHANGED_FILES=$(git diff --name-only $LATEST_DEPLOYMENT $STAGED_DEPLOYMENT)
 
-            # Debug: Print changed files
+            # Debug: Print all changed files
             echo "Changed files:"
             echo "$CHANGED_FILES"
 
             # Default to not restarting the containers
             RESTART_CONTAINER=false
 
-            # Filter changed files to exclude .html and .hbs files
-            FILTERED_FILES=$(echo "$CHANGED_FILES" | grep -E "docker-compose.yaml|package.json|src/|public/.env" | grep -vE "\.html$|\.hbs$")
+            # Filter changed files to include docker-compose.yaml and other relevant files
+            FILTERED_FILES=$(echo "$CHANGED_FILES" | grep -E "^(docker-compose.yaml|package.json|src/|public/.env)$" | grep -vE "\.html$|\.hbs$")
 
             # Debug: Print filtered files
             echo "Filtered files:"
@@ -60,14 +62,14 @@ jobs:
               RESTART_CONTAINER=true
             fi
 
-            # Restart containers
+            # Restart containers if needed
             if [ "$RESTART_CONTAINER" = true ]; then
               echo "Restarting containers..."
               docker compose down
               docker compose up -d
 
               # Update the latest deployment hash
-              echo $STAGED_DEPLOYMENT > .latest_deployment
+              git rev-parse HEAD > .latest_deployment
             else
               echo "Changes pulled but no restart needed."
             fi
