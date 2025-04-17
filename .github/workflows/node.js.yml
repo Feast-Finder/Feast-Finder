@@ -16,7 +16,6 @@ jobs:
     strategy:
       matrix:
         node-version: ["lts/*"]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
     - uses: actions/checkout@v4
@@ -29,6 +28,11 @@ jobs:
 
     - name: Install dependencies
       run: npm ci
+
+    - name: Install Docker Compose
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y docker-compose
 
     - name: Start Docker containers
       run: docker-compose up -d
