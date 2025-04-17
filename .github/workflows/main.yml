@@ -46,7 +46,7 @@ jobs:
 
             # Check what files have changed, and set RESTART_CONTAINER to true if necessary
             # If Dockerfile, package.json, or src/ directory has changed, set RESTART_CONTAINER to true
-            if echo "$CHANGED_FILES" | grep -qE "docker-compose.yaml|package.json|src/(?!.*\.(html|hbs)$)|public/.env"; then
+            if echo "$CHANGED_FILES" | grep -E "docker-compose.yaml|package.json|src/|public/.env" | grep -vE "\.html$|\.hbs$"; then
               RESTART_CONTAINER=true
             fi
 
