@@ -59,6 +59,6 @@ jobs:
               # Update the latest deployment hash
               echo $STAGED_DEPLOYMENT > .latest_deployment
             else
-              echo "Changes pull but no restart needed."
+              echo "Changes pulled but no restart needed."
             fi
           EOF
