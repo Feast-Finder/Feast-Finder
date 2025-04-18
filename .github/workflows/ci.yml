@@ -10,21 +10,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    # Define service containers for PostgreSQL and Redis
     services:
       db:
         image: postgres:14
-        # Use GitHub Secrets for credentials
         env:
-          SESSION_SECRET: ${{ secrets.SESSION_SECRET }} 
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_HOST: db
         ports:
-          - 5432:5432 
+          - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd pg_isready -U ${{ secrets.POSTGRES_USER }} -d ${{ secrets.POSTGRES_DB }} 
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -54,9 +50,8 @@ jobs:
     - name: Run tests
       env:
         SESSION_SECRET: ${{ secrets.SESSION_SECRET }} 
-        POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-        POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        POSTGRES_HOST: db
+        POSTGRES_DB: ${{ secrets.POSTGRES_DB }}     
+        POSTGRES_USER: ${{ secrets.POSTGRES_USER }}     
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }} 
         NODE_ENV: test
       run: npm test
