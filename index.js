@@ -12,7 +12,8 @@ const moment = require('moment');
 const pubClient = createClient({ host: 'redis', port: 6379 });
 const subClient = pubClient.duplicate();
 
-
+pubClient.on('error', (err) => console.error('❌ Redis PubClient Error:', err));
+subClient.on('error', (err) => console.error('❌ Redis SubClient Error:', err));
 
 io.adapter(createAdapter(pubClient, subClient));
 
@@ -1149,4 +1150,6 @@ app.get('/session/group-for-sender', async (req, res) => {
 // *****************************************************
 // <!-- Section 7 : Start Server -->
 // *****************************************************
-http.listen(3000, () => console.log('Server listening on port 3000'));
+const server = http.listen(3000, () => console.log('Server listening on port 3000'));
+
+module.exports = server; // Export the http server instance
