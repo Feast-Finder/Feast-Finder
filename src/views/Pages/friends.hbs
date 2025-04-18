@@ -1,5 +1,10 @@
 {{#> layout name="main" }}
 <style>
+  body {
+    background: url('../../uploads/food_background.png') no-repeat center center fixed;
+    background-size: cover;
+  }
+
   .list-group-item:hover {
     background-color: #f8f9fa;
     cursor: pointer;
@@ -15,7 +20,7 @@
   }
 </style>
 <div class="container pt-4">
-  <h2 class="mb-4">Friends</h2>
+  <h2 class="mb-4 text-white">Friends</h2>
 
   {{#if error}}
   <div class="alert alert-danger">{{error}}</div>
