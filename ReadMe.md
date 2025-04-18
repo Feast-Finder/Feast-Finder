@@ -1,6 +1,6 @@
-# FeastFinder 🍽️
+# FeastFinder 🍽️😋
 
-## About:
+## About 📝
 
 **FeastFinder** is a smart, collaborative solution for indecisive dining plans. When you and your friends can’t agree on where to eat, FeastFinder makes it easy.
 
@@ -16,7 +16,7 @@ Still not sure who’s picking up the tab? No problem. FeastFinder includes fun,
 
 With **FeastFinder**, dining decisions are effortless—and entertaining.
 
-## Project Contributers:
+## Project Contributers 📑:
 
 - Cody Newton  
 - Sam Garmany  
@@ -25,7 +25,7 @@ With **FeastFinder**, dining decisions are effortless—and entertaining.
 - Mason Esslinger  
 - Christopher Chan
 
-## Tech Stack:
+## Tech Stack 💻:
 
 - HTML  
 - CSS  
@@ -37,28 +37,24 @@ With **FeastFinder**, dining decisions are effortless—and entertaining.
 - Azure (for cloud hosting)  
 - Docker
 
-## Prerequisites:
+## Prerequisites ✅:
 
 None! Simply boot up a web browser of your choice and navigate to http://feastfinder.centralus.cloudapp.azure.com/
 
-## Running Locally:
+## Running Locally 🧑‍💻:
 
-Prerequisites:
+**Prerequisites:**
 - Docker Compose 2.35.0
 
 <br>
 
-Running:
+**Running:**
+- Clone the Git repository locally
+- Navigate into the repository in a terminal window
+- Run 'docker compose up --build'
+- In a web browser of your choice, navigate to http://localhost
 
-1.) Clone the Git repository locally
-
-2.) Navigate into the repository in a terminal window
-
-3.) Run 'docker compose up --build'
-
-4.) In a web browser of your choice, navigate to http://localhost
-
-## Running Tests:
+## Running Tests 🧑‍🔬:
 
 TODO
 
