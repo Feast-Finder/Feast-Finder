@@ -959,6 +959,12 @@ io.on('connection', (socket) => {
     await pubClient.hdel(`invitePending:${userId}`, groupId);
   });
 
+  socket.on('disconnect', () => {
+    pubClient.hdel(connectedUsersKey, currentUserId);
+  });
+  
+  
+
   socket.on('ready-to-swipe', async ({ groupId, userId, lat, lng, types }) => {
     if (!activeSessions.has(groupId)) {
       activeSessions.set(groupId, { users: new Set(), ready: new Set(), types });
