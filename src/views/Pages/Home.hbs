@@ -7,6 +7,60 @@
     background: url('../../uploads/food_background.png') no-repeat center center fixed;
     background-size: cover;
   }
+
+  #contentOverlay {
+  position: fixed; /* Position relative to viewport */
+  top: 15%;       /* Adjust this value (e.g., 15%, 20%) for vertical distance from top */
+  left: 0;        /* Make overlay container span full width */
+  right: 0;       /* Make overlay container span full width */
+  /* width: 100%; */ /* Alternative to left/right 0 */
+  display: flex;           /* Use flexbox to align its child */
+  justify-content: center; /* Center child horizontally */
+  align-items: flex-start; /* Align child to the top of this container's line */
+  pointer-events: none;    /* Allow clicks 'through' the overlay container itself */
+  z-index: 10;
+  transition: opacity 0.5s ease;
+  /* Remove height/transform/background - let the inner div handle appearance */
+}
+
+/* Target the actual content box INSIDE the overlay */
+#contentOverlay > div {
+  pointer-events: auto; /* Make the inner box clickable */
+  max-width: 500px; /* Optional: Constrain the width if needed */
+  width: 90%;       /* Optional: Allow some responsiveness */
+  /* The existing Bootstrap classes .p-4, .rounded, .bg-dark, .bg-opacity-75 should style the box */
+}
+
+/* Ensure elements *within* the inner box are clickable too */
+#contentOverlay > div * {
+    pointer-events: auto;
+}
+
+/* Keep original hiding logic */
+#contentOverlay[style*="display: none"] {
+  pointer-events: none;
+}
+
+/* Remove conflicting styles potentially added inline or by bootstrap if needed
+   (These might not be strictly necessary if the above works, but good to keep in mind) */
+#contentOverlay.position-absolute { position: fixed !important; }
+#contentOverlay.top-0 { top: 15% !important; } /* Or your desired value */
+#contentOverlay.start-0 { left: 0 !important; }
+#contentOverlay.w-100 { width: auto !important; } /* Let flexbox handle width based on child */
+#contentOverlay.h-100 { height: auto !important; } /* Let content dictate height */
+
+  #contentOverlay>* {
+    pointer-events: auto;
+  }
+
+  #contentOverlay[style*="display: none"] {
+    pointer-events: none;
+  }
+
+  .container, .row, .card {
+    overflow: visible; /* Allow child elements to move freely */
+    position: static; /* Ensure no positioning restrictions */
+  }
 </style>
 
 <div class="container pt-3">
@@ -19,24 +73,23 @@
             <div class="card shadow-lg position-relative">
                 <!-- grey overlay -->
                 <div id="contentOverlay"
-                    class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-                    style="background-color: rgba(0,0,0,0.7); z-index: 10; border-radius: inherit;">
-                    <div class="text-center p-4 rounded bg-dark bg-opacity-75">
-                        <h2 class="text-white mb-4">Ready to find your next meal?</h2>
-                        {{#if user}}
-                        <button class="btn btn-lg btn-primary px-4 py-2" data-bs-toggle="modal"
-                            data-bs-target="#startSessionModal">
-                            <i class="bi bi-people-fill me-2"></i>Start!
-                        </button>
-                        {{else}}
-                        <p class="text-white">Please <a href="/login" class="text-warning">log in</a> to start swiping.</p>
-                        {{/if}}
-                    </div>
-                </div>
+    class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+    <!-- The inner div already has the background classes -->
+            <div class="text-center p-4 rounded bg-dark bg-opacity-75">
+        <h2 class="text-white mb-4">Ready to find your next meal?</h2>
+        {{#if user}}
+        <button class="btn btn-lg btn-primary px-4 py-2" id="startSessionButton">
+            <i class="bi bi-people-fill me-2"></i>Start!
+        </button>
+        {{else}}
+        <p class="text-white">Please <a href="/login" class="text-warning">log in</a> to start swiping.</p>
+        {{/if}}
+    </div>
+</div>
 
                 <div class="card-body p-0">
                     <!-- main card -->
-                    <div id="restaurant-card" class="position-relative">
+                    <div id="restaurant-card" class="position-relative d-none">
                         <div class="position-relative">
                             <img id="restaurant-image" src="" class="card-img-top" alt="Restaurant Image"
                                 style="height: 250px; object-fit: cover;">
@@ -54,7 +107,7 @@
                         </div>
                     </div>
 
-                    <div class="swipe-controls d-flex justify-content-around py-3 bg-light">
+                    <div class="swipe-controls d-flex justify-content-around py-3 bg-light d-none" id="swipeControls">
                         <button id="dislike-btn" class="btn btn-lg btn-outline-danger rounded-3 px-4" disabled>
                             <i class="bi bi-x-lg"></i> Nope
                         </button>
@@ -968,6 +1021,7 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
                                     maxHeight: 600
                                 });
                             } catch (error) {
+                                console.error('Error getting photo URL:', error);
                                 matchImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
                             }
                         } else {
@@ -1070,7 +1124,7 @@ if (window._pendingInvitePayload) {
       setTimeout(() => {
         overlay.style.display = 'none';
         document.getElementById('like-btn')?.removeAttribute('disabled');
-        document.getElementById('dislike-btn')?.removeAttribute('disabled');
+        document.getElementByid('dislike-btn')?.removeAttribute('disabled');
       }, 500);
     }
   } catch (err) {
@@ -1124,9 +1178,21 @@ socket.on('connect', () => {
   restoreSwipingSession();
 });
 
+document.addEventListener('DOMContentLoaded', () => {
+    const startSessionButton = document.getElementById('startSessionButton');
+    const restaurantCard = document.getElementById('restaurant-card');
+    const swipeControls = document.getElementById('swipeControls');
 
+    // Initially hide the restaurant card and swipe controls
+    restaurantCard.classList.add('d-none');
+    swipeControls.classList.add('d-none');
 
-
+    // Show the restaurant card and swipe controls when the session starts
+    startSessionButton.addEventListener('click', () => {
+        restaurantCard.classList.remove('d-none');
+        swipeControls.classList.remove('d-none');
+    });
+});
 </script>
 
 {{/layout}}
