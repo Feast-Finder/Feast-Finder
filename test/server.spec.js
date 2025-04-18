@@ -1,6 +1,6 @@
 // ********************** Initialize server **********************************
 
-const server = require('../index'); //TODO: Make sure the path to your index.js is correctly added
+const server = require('../index'); // Ensure index.js exports the http server instance
 
 // ********************** Import Libraries ***********************************
 
@@ -10,7 +10,6 @@ chai.should();
 chai.use(chaiHttp);
 const { assert, expect } = chai;
 const bcryptjs = require('bcryptjs');
-const app = require('../index'); // or wherever your Express app is
 
 
 
@@ -20,7 +19,7 @@ describe('Server!', () => {
   // Sample test case given to test / endpoint.
   it('Returns the default welcome message', done => {
     chai
-      .request(server)
+      .request(server) // Use server consistently
       .get('/welcome')
       .end((err, res) => {
         expect(res).to.have.status(200);
@@ -43,7 +42,7 @@ describe('Server!', () => {
 describe('Testing Add User API', () => {
   it('positive : /register_test', done => {
     chai
-      .request(server)
+      .request(server) // Use server consistently
       .post('/register_test')
       .send({ username: 'JohnDoe', password: '2020' })
       .end((err, res) => {
@@ -62,7 +61,7 @@ describe('Testing Add User API', () => {
   // and expects the API to return a status of 400 along with the "Invalid input" message.
   it('Negative : /register_test. Checking invalid name', done => {
     chai
-      .request(server)
+      .request(server) // Use server consistently
       .post('/register_test')
       .send({ username: 'alice', password: '2020' })
       .end((err, res) => {
@@ -79,7 +78,7 @@ describe('Friends Route Tests', () => {
     username: 'rex',
     password: '123',
   };
-  const db = require('./db');
+  const db = require('./db'); // db connection for setup/teardown
 
   before(async () => {
     await db.query('TRUNCATE TABLE Friends, Users RESTART IDENTITY CASCADE');
@@ -91,7 +90,7 @@ describe('Friends Route Tests', () => {
   });
 
   beforeEach(() => {
-    agent = chai.request.agent(app);
+    agent = chai.request.agent(server); // Corrected: Use server
   });
 
   afterEach(() => {
@@ -105,22 +104,21 @@ describe('Friends Route Tests', () => {
   describe('GET /friends_test', () => {
     it('should return 401 if user is not authenticated', done => {
       chai
-        .request(app)
+        .request(server) // Use server consistently
         .get('/friends_test')
         .end((err, res) => {
-
           expect(res.text).to.equal('Not authenticated');
           done();
         });
     });
 
     it('should return user profile when authenticated', async () => {
-      const agent = chai.request.agent(app);
+      const agent = chai.request.agent(server); // Use server consistently
       await agent.post('/login').send(testUser);
       const res = await agent.get('/friends_test');
 
       expect(res.body).to.have.property('username', testUser.username);
-      agent.close();
+      agent.close(); // Close the agent
     });
   });
 
