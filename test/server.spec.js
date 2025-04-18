@@ -11,8 +11,8 @@ chai.use(chaiHttp);
 const { assert, expect } = chai;
 const bcryptjs = require('bcryptjs');
 const app = require('../index'); // or wherever your Express app is
-const http = require('http');
-const server = http.createServer(app);
+
+
 
 // ********************** DEFAULT WELCOME TESTCASE ****************************
 
@@ -88,7 +88,6 @@ describe('Friends Route Tests', () => {
       'INSERT INTO Users (username, password_hash) VALUES ($1, $2)',
       [testUser.username, hashedPassword]
     );
-    await server.listen(3000); // Start the server
   });
 
   beforeEach(() => {
@@ -101,7 +100,6 @@ describe('Friends Route Tests', () => {
 
   after(async () => {
     await db.query('TRUNCATE TABLE Friends, Users RESTART IDENTITY CASCADE');
-    await server.close(); // Stop the server
   });
 
   describe('GET /friends_test', () => {
