@@ -47,12 +47,6 @@ jobs:
       env:
         NODE_ENV: test
 
-    # - name: Wait for services to be ready
-    #   run: sleep 30 # maybe adjust this later
-
-    - name: Install dependencies for tests
-      run: npm install
-
     - name: Run tests
       run: npm test
 
