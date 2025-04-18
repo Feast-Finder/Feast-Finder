@@ -2,6 +2,7 @@
 {{>nav}}
 <script src="/socket.io/socket.io.js"></script>
 
+{{{body}}}
 
 <!-- Invitation Modal (triggered on any page) -->
 <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
@@ -70,7 +71,6 @@ socket.on('swipe-session-cancelled', ({ groupId }) => {
 });
 </script>
 
-{{{body}}}
 
 
 
