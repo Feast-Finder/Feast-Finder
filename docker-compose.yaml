@@ -25,7 +25,7 @@ services:
     ports:
       - '80:3000'
     volumes:
-      - .:/repository:cached
+      - .:/repository
     command: 'npm start'
 
 volumes:
