@@ -21,6 +21,7 @@ jobs:
 
     - name: Run tests using Docker Compose
       env:
+        NODE_ENV: test
         SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
         POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
         POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
