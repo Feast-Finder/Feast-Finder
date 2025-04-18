@@ -962,8 +962,8 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     pubClient.hdel(connectedUsersKey, currentUserId);
   });
-  
-  
+
+
 
   socket.on('ready-to-swipe', async ({ groupId, userId, lat, lng, types }) => {
     if (!activeSessions.has(groupId)) {
@@ -1156,6 +1156,13 @@ app.get('/session/group-for-sender', async (req, res) => {
 // *****************************************************
 // <!-- Section 7 : Start Server -->
 // *****************************************************
-const server = http.listen(3000, () => console.log('Server listening on port 3000'));
+const PORT = process.env.PORT || 3000;
 
-module.exports = server; // Export the http server instance
+let server;
+if (require.main === module) {
+  server = http.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
+
+module.exports = { app, server }; 
