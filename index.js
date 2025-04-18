@@ -12,7 +12,8 @@ const moment = require('moment');
 const pubClient = createClient({ host: 'redis', port: 6379 });
 const subClient = pubClient.duplicate();
 
-
+pubClient.on('error', (err) => console.error('❌ Redis PubClient Error:', err));
+subClient.on('error', (err) => console.error('❌ Redis SubClient Error:', err));
 
 io.adapter(createAdapter(pubClient, subClient));
 
@@ -850,7 +851,7 @@ io.on('connection', (socket) => {
     currentUserId = userId;
     await pubClient.hset(connectedUsersKey, userId, socket.id);
     socket.join(`user-${userId}`);
-  
+
     try {
       const user = await db.one('SELECT username FROM users WHERE user_id = $1', [userId]);
       await pubClient.hset('usernamesToIds', user.username, userId);
@@ -884,7 +885,7 @@ io.on('connection', (socket) => {
   socket.on('invite-user-by-username', async ({ username, groupId, lat, lng, types }) => {
     const target = await pubClient.hget('usernamesToIds', username);
     if (!target) return;
-    await pubClient.set(`activeGroup:${currentUserId}`, groupId); 
+    await pubClient.set(`activeGroup:${currentUserId}`, groupId);
     await pubClient.hset(`invitePending:${target}`, groupId, JSON.stringify({ groupId, lat, lng, types }));
     await pubClient.hset(pendingNotifiesKey, groupId, currentUserId);
     await pubClient.hset('groupInvitees', groupId, target);
@@ -900,29 +901,29 @@ io.on('connection', (socket) => {
           types,
           senderId: currentUserId // optional
         });
-        
+
         return;
       }
       await new Promise(res => setTimeout(res, 250));
     }
-   
-await pubClient.set(`activeGroup:${currentUserId}`, groupId);
+
+    await pubClient.set(`activeGroup:${currentUserId}`, groupId);
 
   });
 
   socket.on('join-session', async (payload) => {
     const groupId = payload.groupId;
     const userId = payload.userId;
-  
+
     if (!groupId || !userId) {
       console.error('❌ Missing groupId or userId in join-session');
       return;
     }
-  
+
     if (!activeGroups.has(groupId)) activeGroups.set(groupId, new Set());
     activeGroups.get(groupId).add(userId);
     socket.join(`group-${groupId}`);
-  
+
     try {
       await pubClient.set(`activeGroup:${userId}`, groupId);
       console.log(`✅ Stored active group for user ${userId}: ${groupId}`);
@@ -930,7 +931,7 @@ await pubClient.set(`activeGroup:${currentUserId}`, groupId);
       console.error('❌ Failed to store active group in Redis:', err);
     }
   });
-  
+
 
   socket.on('accept-session-invite', async ({ groupId, userId }) => {
     if (!activeSessions.has(groupId)) {
@@ -939,8 +940,8 @@ await pubClient.set(`activeGroup:${currentUserId}`, groupId);
     const session = activeSessions.get(groupId);
     session.users.add(userId);
     session.ready.add(userId);
-// Add user to GroupMembers table if not already present
-await db.none(`
+    // Add user to GroupMembers table if not already present
+    await db.none(`
   INSERT INTO groupmembers (group_id, user_id)
   VALUES ($1, $2)
   ON CONFLICT (group_id, user_id) DO NOTHING
@@ -994,7 +995,7 @@ await db.none(`
       }
     }
 
-    
+
     await pubClient.hdel(`invitePending:${inviteeId}`, groupId); // not userId
     await pubClient.hdel(`inviteCancelled:${inviteeId}`, groupId);
     await pubClient.del(`${groupId}:accepted`);
@@ -1046,11 +1047,11 @@ app.post('/restaurants/vote', async (req, res) => {
         VALUES ($1, $2, 0, 0)
         ON CONFLICT (api_restaurant_id) DO NOTHING
       `, [place_id, restaurant_name]);
-      
+
       restaurant = await db.one(`
         SELECT restaurant_id FROM restaurants WHERE api_restaurant_id = $1
       `, [place_id]);
-      
+
     }
 
     const restaurant_id = restaurant.restaurant_id;
@@ -1071,14 +1072,14 @@ app.post('/restaurants/vote', async (req, res) => {
       const groupMembers = await db.any(`
         SELECT * FROM groupmembers WHERE group_id = $1
       `, [groupId]);
-      
+
       console.log(`👥 Raw group members for group ${groupId}:`, groupMembers);
-      
+
       const { total } = await db.one(`
         SELECT COUNT(*) AS total FROM groupmembers WHERE group_id = $1
       `, [groupId]);
-      
-      
+
+
       console.log('🧮 Match check — count of likes:', count, 'group total members:', total);
 
       if (parseInt(count) === parseInt(total)) {
@@ -1089,32 +1090,32 @@ app.post('/restaurants/vote', async (req, res) => {
         // Clean up swipes after match
         await db.none(`DELETE FROM swipes WHERE group_id = $1`, [groupId]);
 
-// 1. Emit to entire group (still useful if swiping in sync)
-io.to(`group-${groupId}`).emit('match-found', {
-  restaurant: {
-    place_id,
-    restaurant_name,
-    photoUrl: photoUrl || null,
-  }
-});
+        // 1. Emit to entire group (still useful if swiping in sync)
+        io.to(`group-${groupId}`).emit('match-found', {
+          restaurant: {
+            place_id,
+            restaurant_name,
+            photoUrl: photoUrl || null,
+          }
+        });
 
-// 2. Also send directly to each user socket in the group
-const members = await db.any(`
+        // 2. Also send directly to each user socket in the group
+        const members = await db.any(`
   SELECT user_id FROM groupmembers WHERE group_id = $1
 `, [groupId]);
 
-for (const member of members) {
-  const socketId = await pubClient.hget('connectedUsers', member.user_id);
-  if (socketId) {
-    io.to(socketId).emit('match-found', {
-      restaurant: {
-        place_id,
-        restaurant_name,
-        photoUrl: photoUrl || null,
-      }
-    });
-  }
-}
+        for (const member of members) {
+          const socketId = await pubClient.hget('connectedUsers', member.user_id);
+          if (socketId) {
+            io.to(socketId).emit('match-found', {
+              restaurant: {
+                place_id,
+                restaurant_name,
+                photoUrl: photoUrl || null,
+              }
+            });
+          }
+        }
 
 
         return res.json({ success: true, isMatch: true, restaurant: { place_id, restaurant_name, photoUrl } });
@@ -1148,11 +1149,13 @@ app.get('/session/group-for-sender', async (req, res) => {
 
 
 
-  
+
 
 
 
 // *****************************************************
 // <!-- Section 7 : Start Server -->
 // *****************************************************
-http.listen(3000, () => console.log('Server listening on port 3000'));
+const server = http.listen(3000, () => console.log('Server listening on port 3000'));
+
+module.exports = server; // Export the http server instance

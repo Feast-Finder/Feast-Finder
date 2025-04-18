@@ -1,12 +1,13 @@
 services:
   db:
     image: postgres:14
-    env_file: .env
-    expose:
-      - '5432'
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-testdb}
+      POSTGRES_USER: ${POSTGRES_USER:-testuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-testpass}
     volumes:
-      - feast-finder:/var/lib/postgresql/data
-      - ./src/init_data:/docker-entrypoint-initdb.d
+      - postgres_data_test:/var/lib/postgresql/data
 
   redis:
     image: redis:6
@@ -26,7 +27,7 @@ services:
       - '80:3000'
     volumes:
       - .:/repository
-    command: 'npm start'
-
+    command: npm test
+    
 volumes:
-  feast-finder:
+  postgres_data_test:
