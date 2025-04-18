@@ -9,10 +9,10 @@ INSERT INTO users (username, email, phone, password_hash, active, last_active_at
 ('grace', 'grace@example.com', '789-012-3456', 'hash7', TRUE, NULL),
 ('heidi', 'heidi@example.com', '890-123-4567', 'hash8', TRUE, NULL),
 ('ivan', 'ivan@example.com', '901-234-5678', 'hash9', FALSE, '2025-04-03 20:00:00+00'),
-('judy', 'judy@example.com', '012-345-6789', 'hash10', TRUE, NULL);
+('judy', 'judy@example.com', '012-345-6789', 'hash10', TRUE, NULL),
+('testuser', 'testuser@example.com', '111-222-3333', '$2a$12$TeXldp3nLYmoot.CufTgiOKl/nyZhR6VEIvP2QXsi7Al9aEC87uSa', TRUE, NULL);
 
-
-
+-- Insert Friends
 INSERT INTO Friends (user_id_1, user_id_2) VALUES
 (1, 2),
 (1, 3),
@@ -25,7 +25,7 @@ INSERT INTO Friends (user_id_1, user_id_2) VALUES
 (7, 8),
 (9, 10);
 
-
+-- Insert Groups
 INSERT INTO Groups (creator_user_id, location_latitude, location_longitude, max_distance, excluded_cuisines) VALUES
 (1, 37.7749, -122.4194, 10, '["Fast Food"]'),
 (2, 40.7128, -74.0060, 15, '["Seafood"]'),
@@ -51,7 +51,6 @@ INSERT INTO GroupMembers (group_id, user_id) VALUES
 (9, 9), (9, 4),
 (10, 10), (10, 5);
 
-
 -- Insert Restaurants
 INSERT INTO Restaurants (api_restaurant_id, name, address, latitude, longitude, cuisine, price_range, rating, image_url, api_data) VALUES
 ('rest1', 'Sushi Zen', '123 Sushi St', 37.7749, -122.4194, 'Sushi', '$$$', 4.6, 'http://example.com/img1.jpg', '{"source": "yelp"}'),
@@ -73,7 +72,6 @@ INSERT INTO Swipes (group_id, user_id, restaurant_id, swipe_direction) VALUES
 (4, 4, 4, 'right'), (4, 8, 4, 'right'), (4, 9, 4, 'right'),
 (5, 5, 5, 'left'), (5, 10, 5, 'left');
 
-
 -- Insert Matches (based on majority 'right' swipes)
 INSERT INTO Matches (group_id, restaurant_id) VALUES
 (1, 1),
@@ -87,6 +85,7 @@ INSERT INTO Matches (group_id, restaurant_id) VALUES
 (3, 6),  
 (5, 8);  
 
+-- Insert User Preferences
 INSERT INTO user_preferences (user_id, cuisines, dietary, price_range) VALUES
 (1, ARRAY['italian', 'mexican'], ARRAY['vegetarian'], '$$'),
 (2, ARRAY['chinese', 'thai'], ARRAY['glutenFree'], '$'),
@@ -98,3 +97,9 @@ INSERT INTO user_preferences (user_id, cuisines, dietary, price_range) VALUES
 (8, ARRAY['chinese', 'italian'], ARRAY['vegan'], '$$'),
 (9, ARRAY['fastfood'], ARRAY['glutenFree'], '$'),
 (10, ARRAY['italian', 'indian', 'thai'], ARRAY[]::TEXT[], '$$$');
+
+-- Add default preferences for the test user as well
+INSERT INTO user_preferences (user_id, cuisines, dietary, price_range)
+SELECT user_id, ARRAY[]::TEXT[], ARRAY[]::TEXT[], 'any'
+FROM users WHERE username = 'testuser'
+ON CONFLICT (user_id) DO NOTHING;
