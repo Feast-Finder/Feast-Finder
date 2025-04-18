@@ -78,28 +78,32 @@
                         <label for="groupName" class="form-label">Group Name (optional)</label>
                         <input type="text" class="form-control" id="groupName" placeholder="Enter a name for your group">
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="location" class="form-label">Location</label>
                         <input type="text" class="form-control" id="location" placeholder="Enter city or ZIP code" required>
                         <div id="locationAutocomplete" class="list-group mt-2 d-none"></div>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label class="form-label">Friends (optional)</label>
                         <div id="friendSelection">
                             {{#if friends}}
-          <div class="mb-3">
-            <label for="friendUsername" class="form-label">Invite a Friend</label>
-            <select id="friendUsername" class="form-select">
-              <option value="">Select a friend</option>
-              {{#each friends}}
-                <option value="{{this.username}}">{{this.username}}</option>
-              {{/each}}
-            </select>
-          </div>
-
-                            <div id="selectedFriends" class="d-flex flex-wrap gap-2 my-2"></div>
+                            <div class="mb-3 dropdown d-grid">
+                                <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" data-bs-target="#friendsDropdown" data-bs-auto-close="outside">
+                                    Select friends to invite
+                                </button>
+                                <ul class="dropdown-menu w-100 dropdown-menu-end" aria-labelledby="dropdownMenuButton" id="friendsDropdown">
+                                    {{#each friends}}
+                                    <li class="m-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="{{this.username}}-check" value="{{this.username}}">
+                                            <label class="form-check-label" for="{{this.username}}-check">{{this.username}}</label>
+                                        </div>
+                                    </li>
+                                    {{/each}}
+                                </ul>
+                            </div>
                             {{else}}
                             <p class="text-muted fst-italic">No friends available. <a href="/friends">Add friends</a> to invite them.</p>
                             {{/if}}
