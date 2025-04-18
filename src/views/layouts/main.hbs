@@ -24,7 +24,9 @@
 const USER_ID = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
 let socket = io();
 
+// Initialize socket connection and register user
 socket.on('connect', () => {
+  console.log('Socket connected, registering user:', USER_ID);
   if (USER_ID) {
     socket.emit('register-user', { userId: USER_ID });
     socket.emit('ready-for-invites', { userId: USER_ID });
@@ -33,20 +35,36 @@ socket.on('connect', () => {
 
 // Show invite modal when an invite is received
 socket.on('invite-user-to-session', ({ groupId, lat, lng, types }) => {
+  console.log('Invite received:', { groupId, lat, lng, types });
+  
   const redirected = sessionStorage.getItem('redirectedFromInvite');
-  if (redirected === 'accepted') return;
+  if (redirected === 'accepted') {
+    console.log('Already accepted invite, ignoring');
+    return;
+  }
 
   sessionStorage.setItem('invitePayload', JSON.stringify({ groupId, lat, lng, types }));
   sessionStorage.setItem('redirectedFromInvite', 'pending');
 
   const modalEl = document.getElementById('inviteModal');
   const joinBtn = document.getElementById('joinSwipeBtn');
-  if (!modalEl || !joinBtn) return;
+  
+  if (!modalEl) {
+    console.error('Invite modal element not found!');
+    return;
+  }
+  
+  if (!joinBtn) {
+    console.error('Join button not found!');
+    return;
+  }
 
+  console.log('Showing invite modal');
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   modal.show();
 
   joinBtn.onclick = () => {
+    console.log('Join button clicked, redirecting to home');
     sessionStorage.setItem('redirectedFromInvite', 'accepted');
     modal.hide();
     document.body.classList.remove('modal-open');
@@ -55,7 +73,7 @@ socket.on('invite-user-to-session', ({ groupId, lat, lng, types }) => {
   };
 });
 
-// Optional: handle session cancellation
+// Handle session cancellation
 socket.on('swipe-session-cancelled', ({ groupId }) => {
   console.log('❌ Session was cancelled for group:', groupId);
   sessionStorage.removeItem('invitePayload');
@@ -64,7 +82,25 @@ socket.on('swipe-session-cancelled', ({ groupId }) => {
   const modalEl = document.getElementById('inviteModal');
   if (modalEl) {
     const modal = bootstrap.Modal.getInstance(modalEl);
-    modal?.hide();
+    if (modal) {
+      modal.hide();
+    }
+  }
+});
+
+// Check for pending invites on page load
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM loaded, checking for pending invites');
+  const pendingInvite = sessionStorage.getItem('invitePayload');
+  const redirectStatus = sessionStorage.getItem('redirectedFromInvite');
+  
+  if (pendingInvite && redirectStatus === 'pending') {
+    console.log('Found pending invite, showing modal');
+    const modalEl = document.getElementById('inviteModal');
+    if (modalEl) {
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.show();
+    }
   }
 });
 </script>
