@@ -470,14 +470,9 @@ socket.on('start-swiping', ({ lat, lng, types }) => {
   }, 500);
 
   if (lat && lng) {
-    console.log('📍 Fetching restaurants as receiver...');
-    // Try to load shared restaurants first
-    const sharedRestaurants = sessionStorage.getItem('currentRestaurants');
-    if (sharedRestaurants) {
-        loadSharedRestaurants();
-    } else {
-        searchNearbyRestaurants({ lat: parseFloat(lat), lng: parseFloat(lng) });
-    }
+    console.log('📍 Requesting restaurant list...');
+    // Request the restaurant list instead of searching directly
+    socket.emit('request-restaurant-list', { groupId: currentGroupId });
   }
 
   likeBtn.removeAttribute('disabled');
@@ -806,8 +801,13 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
                 console.log('Filtered and sorted restaurants:', filteredRestaurants.length);
                 
                 if (filteredRestaurants.length > 0) {
-                    // Store the sorted list in sessionStorage to share with other users
-                    sessionStorage.setItem('currentRestaurants', JSON.stringify(filteredRestaurants));
+                    // Share the restaurant list with the group
+                    socket.emit('share-restaurant-list', {
+                        groupId: currentGroupId,
+                        restaurants: filteredRestaurants
+                    });
+                    
+                    // Set local restaurants
                     currentRestaurants = filteredRestaurants;
                     currentIndex = 0;
                     showNextRestaurant();
@@ -821,15 +821,23 @@ document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
         });
     }
 
-    // Add function to load shared restaurant list
-    function loadSharedRestaurants() {
-        const sharedRestaurants = sessionStorage.getItem('currentRestaurants');
-        if (sharedRestaurants) {
-            currentRestaurants = JSON.parse(sharedRestaurants);
-            currentIndex = 0;
-            showNextRestaurant();
+    // Add socket event handlers for restaurant list synchronization
+    socket.on('need-restaurant-list', ({ groupId }) => {
+        console.log('Group needs restaurant list, initiating search...');
+        if (inviteState.lat && inviteState.lng) {
+            searchNearbyRestaurants({ 
+                lat: parseFloat(inviteState.lat), 
+                lng: parseFloat(inviteState.lng) 
+            });
         }
-    }
+    });
+
+    socket.on('restaurant-list', (restaurants) => {
+        console.log('Received synchronized restaurant list:', restaurants.length);
+        currentRestaurants = restaurants;
+        currentIndex = 0;
+        showNextRestaurant();
+    });
 
     function showNextRestaurant() {
         console.log('Showing restaurant at index:', currentIndex);

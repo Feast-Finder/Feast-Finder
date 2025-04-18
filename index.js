@@ -1002,6 +1002,38 @@ io.on('connection', (socket) => {
     await pubClient.del(`groupInvitees:${groupId}`);
     await db.none('DELETE FROM swipes WHERE group_id = $1', [groupId]);
   });
+
+  socket.on('request-restaurant-list', async ({ groupId }) => {
+    try {
+      // Check if we already have a restaurant list for this group in Redis
+      const existingList = await pubClient.get(`restaurants:${groupId}`);
+      
+      if (existingList) {
+        // If we have a list, send it to the requesting user
+        const socketId = await pubClient.hget(connectedUsersKey, currentUserId);
+        if (socketId) {
+          io.to(socketId).emit('restaurant-list', JSON.parse(existingList));
+        }
+      } else {
+        // If no list exists, notify the group that we need someone to generate it
+        io.to(`group-${groupId}`).emit('need-restaurant-list', { groupId });
+      }
+    } catch (err) {
+      console.error('Error in request-restaurant-list:', err);
+    }
+  });
+
+  socket.on('share-restaurant-list', async ({ groupId, restaurants }) => {
+    try {
+      // Store the restaurant list in Redis with a 1-hour expiration
+      await pubClient.setex(`restaurants:${groupId}`, 3600, JSON.stringify(restaurants));
+      
+      // Broadcast the list to all users in the group
+      io.to(`group-${groupId}`).emit('restaurant-list', restaurants);
+    } catch (err) {
+      console.error('Error in share-restaurant-list:', err);
+    }
+  });
 });
 async function getPhotoUrlFromDBOrPlaces(place_id) {
   try {
