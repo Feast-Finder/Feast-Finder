@@ -103,9 +103,7 @@
         </div>
       </div>
     </div>
-
-
-
+    
     <!-- Recent Sessions -->
     <div class="mb-4 position-relative">
       <div class="card shadow">
@@ -173,25 +171,9 @@
       </div>
     </div>
 
-    <!-- Invitation Modal -->
-    <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="inviteModalLabel">Swipe Session Invite</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            A friend invited you to join a swiping session.
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary" id="joinSwipeBtn">Join Swiping</button>
-          </div>
-        </div>
-      </div>
-    </div>
+  
+    
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         const searchInput = document.getElementById('friendSearch');
@@ -486,19 +468,7 @@
           }
         });
       });
-      const socket = io();
-      const userId = {{ user.user_id }};
-      socket.emit('register-user', { userId });
-      socket.on('invite-user-to-session', ({ groupId }) => {
-        console.log('📩 Received invite for group:', groupId);
-        const inviteModal = new bootstrap.Modal(document.getElementById('inviteModal'));
-        inviteModal.show();
 
-        // Add click handler for the Join button
-        document.getElementById('joinSwipeBtn')?.addEventListener('click', () => {
-          socket.emit('accept-session-invite', { groupId, userId });
-        });
-      });
       document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
           const friendsList = document.getElementById('friendsList');

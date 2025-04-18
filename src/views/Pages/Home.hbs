@@ -16,10 +16,10 @@
             <div class="alert alert-danger">{{error}}</div>
             {{/if}}
 
-            <div class="card shadow-lg position-relative">
+            <div class="card shadow-lg">
                 <!-- grey overlay -->
                 <div id="contentOverlay"
-                    class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                    class=""
                     style="background-color: rgba(0,0,0,0.7); z-index: 10; border-radius: inherit;">
                     <div class="text-center p-4 rounded bg-dark bg-opacity-75">
                         <h2 class="text-white mb-4">Ready to find your next meal?</h2>
@@ -30,9 +30,9 @@
                     </div>
                 </div>
 
-                <div class="card-body p-0">
+                <div class="card-body p-0 d-none" id="mainCard">
                     <!-- main card -->
-                    <div id="restaurant-card" class="position-relative">
+                    <div id="restaurant-card" class="position-relative d-none">
                         <div class="position-relative">
                             <img id="restaurant-image" src="" class="card-img-top" alt="Restaurant Image"
                                 style="height: 250px; object-fit: cover;">
@@ -50,7 +50,7 @@
                         </div>
                     </div>
 
-                    <div class="swipe-controls d-flex justify-content-around py-3 bg-light">
+                    <div class="swipe-controls d-flex justify-content-around py-3 bg-light d-none" id="swipeControls">
                         <button id="dislike-btn" class="btn btn-lg btn-outline-danger rounded-3 px-4" disabled>
                             <i class="bi bi-x-lg"></i> Nope
                         </button>
@@ -385,6 +385,9 @@ let groupCreated = false;
   const inviteBtn = document.getElementById('startSessionBtn');
   if (inviteBtn) {
     inviteBtn.addEventListener('click', async () => {
+      document.getElementById('restaurant-card')?.classList.remove('d-none');
+      document.getElementById('mainCard')?.classList.remove('d-none');
+      document.getElementById('swipeControls')?.classList.remove('d-none');
       showWaitingOverlay();
   if (groupCreated) return; // 🛑 prevent re-submission
   groupCreated = true;
@@ -446,35 +449,18 @@ socket.emit('invite-user-by-username', {
   }
 });
 
-socket.on('invite-user-to-session', async ({ groupId, lat, lng, types }) => {
-  const redirected = sessionStorage.getItem('redirectedFromInvite');
-  if (redirected === 'accepted') return;
-
-  sessionStorage.setItem('invitePayload', JSON.stringify({ groupId, lat, lng, types }));
-  sessionStorage.setItem('redirectedFromInvite', 'pending');
-
-  const modalEl = document.getElementById('inviteModal');
-  const joinBtn = document.getElementById('joinSwipeBtn');
-  if (!modalEl || !joinBtn) return;
-
-  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-  modal.show();
-
-  joinBtn.onclick = () => {
-    sessionStorage.setItem('redirectedFromInvite', 'accepted');
-    modal.hide();
-    document.body.classList.remove('modal-open');
-    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-    window.location.href = '/home';
-  };
-});
-
 socket.on('friend-accepted-invite', () => {
   enableSwipingUI();
+        document.getElementById('restaurant-card')?.classList.remove('d-none');
+      document.getElementById('mainCard')?.classList.remove('d-none');
+      document.getElementById('swipeControls')?.classList.remove('d-none');
 });
 
 socket.on('start-swiping', ({ lat, lng, types }) => {
   enableSwipingUI();
+        document.getElementById('restaurant-card')?.classList.remove('d-none');
+      document.getElementById('mainCard')?.classList.remove('d-none');
+      document.getElementById('swipeControls')?.classList.remove('d-none');
 });
 
 socket.on('swipe-session-cancelled', ({ groupId }) => {
