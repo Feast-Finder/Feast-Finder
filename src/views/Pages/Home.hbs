@@ -36,6 +36,7 @@
   }
 
   @media (max-width: 1250px) {
+
     .start-center,
     #recentMatchesCard {
       position: static;
@@ -50,11 +51,11 @@
       justify-content: center;
     }
   }
-  .badge.rounded-pill {
-  font-size: 0.85rem;
-  padding: 0.4em 0.75em;
-}
 
+  .badge.rounded-pill {
+    font-size: 0.85rem;
+    padding: 0.4em 0.75em;
+  }
 </style>
 
 <div class="home-wrapper">
@@ -70,38 +71,40 @@
   <div id="recentMatchesCard">
     <h5 class="mb-3">Recent Matching Sessions</h5>
     {{#if recentMatches.length}}
-      <div class="list-group">
-        {{#each recentMatches}}
-          <div class="list-group-item bg-secondary text-white rounded mb-2">
-            <h6 class="mb-1">{{#if group_name}}{{group_name}}{{else}}Matching Session{{/if}}</h6>
-            <p class="mb-1"><strong>Restaurant:</strong> {{restaurant_name}}</p>
-            <small><strong>Members:</strong> {{#each members}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</small>
-          </div>
-        {{/each}}
+    <div class="list-group">
+      {{#each recentMatches}}
+      <div class="list-group-item bg-secondary text-white rounded mb-2">
+        <h6 class="mb-1">{{#if group_name}}{{group_name}}{{else}}Matching Session{{/if}}</h6>
+        <p class="mb-1"><strong>Restaurant:</strong> {{restaurant_name}}</p>
+        <small><strong>Members:</strong> {{#each members}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</small>
       </div>
+      {{/each}}
+    </div>
     {{else}}
-      <p>No recent matches yet. Start a new session!</p>
+    <p>No recent matches yet. Start a new session!</p>
     {{/if}}
   </div>
 
-<div class="position-fixed top-50 start-0 translate-middle-y ms-3" style="z-index: 1040; max-width: 220px;">
-  <div class="card bg-dark text-white rounded-4 shadow p-3">
-    <h5 class="mb-3 text-center">🏆 Top Matches</h5>
+  <div class="position-fixed top-50 start-0 translate-middle-y ms-3" style="z-index: 1040; max-width: 220px;"
+    id="topMatches">
+    <div class="card bg-dark text-white rounded-4 shadow p-3">
+      <h5 class="mb-3 text-center">🏆 Top Matches</h5>
 
-    {{#if topFriends.length}}
+      {{#if topFriends.length}}
       <div class="d-flex flex-column gap-3">
         {{#each topFriends}}
-          <div class="d-flex align-items-center justify-content-between bg-primary bg-opacity-75 rounded px-3 py-2 shadow-sm">
-            <span class="fw-semibold text-white">{{this.matched_with}}</span>
-            <span class="badge bg-light text-dark rounded-pill">{{this.count}}</span>
-          </div>
+        <div
+          class="d-flex align-items-center justify-content-between bg-primary bg-opacity-75 rounded px-3 py-2 shadow-sm">
+          <span class="fw-semibold text-white">{{this.matched_with}}</span>
+          <span class="badge bg-light text-dark rounded-pill">{{this.count}}</span>
+        </div>
         {{/each}}
       </div>
-    {{else}}
+      {{else}}
       <p class="text-muted text-center mb-0">No matches yet.</p>
-    {{/if}}
+      {{/if}}
+    </div>
   </div>
-</div>
 
 </div>
 
@@ -112,39 +115,38 @@
 
 
 
-
-        <div class="card-body p-0 d-none" id="mainCard">
-          <!-- main card -->
-          <div id="restaurant-card" class="position-relative d-none">
-            <div class="position-relative">
-              <img id="restaurant-image" src="" class="card-img-top" alt="Restaurant Image"
-                style="height: 250px; object-fit: cover;">
-              <button id="info-btn" class="btn btn-light btn-sm rounded-3 position-absolute bottom-0 end-0 m-3 shadow">
-                <i class="bi bi-info-lg"></i> Details
-              </button>
-            </div>
-            <div class="p-3">
-              <h4 id="restaurant-name"></h4>
-              <div id="restaurant-badges" class="mb-2">
-              </div>
-              <p id="restaurant-description" class="mb-2"></p>
-              <p id="restaurant-distance" class="text-muted small mb-0"></p>
-            </div>
-          </div>
-
-          <div class="swipe-controls d-flex justify-content-around py-3 bg-light d-none" id="swipeControls">
-            <button id="dislike-btn" class="btn btn-lg btn-outline-danger rounded-3 px-4" disabled>
-              <i class="bi bi-x-lg"></i> Nope
-            </button>
-            <button id="like-btn" class="btn btn-lg btn-outline-success rounded-3 px-4" disabled>
-              <i class="bi bi-heart-fill"></i> Like
-            </button>
-          </div>
-        </div>
+<div class="position-fixed top-50 start-50 translate-middle d-none" id="mainCard"
+     style="transform: translate(-50%, -60%); z-index: 20;">
+  <div class="card-body p-0 bg-white shadow-lg rounded-4" style="max-width: 600px; width: 90%; border-radius: 1.25rem;">
+    <!-- Restaurant Card -->
+    <div id="restaurant-card" class="position-relative">
+      <div class="position-relative">
+        <img id="restaurant-image" src="" class="card-img-top rounded-top-4" alt="Restaurant Image"
+             style="height: 300px; object-fit: cover;">
+        <button id="info-btn" class="btn btn-light btn-sm rounded-3 position-absolute bottom-0 end-0 m-3 shadow">
+          <i class="bi bi-info-lg"></i> Details
+        </button>
       </div>
+      <div class="p-4">
+        <h4 id="restaurant-name"></h4>
+        <div id="restaurant-badges" class="mb-2"></div>
+        <p id="restaurant-description" class="mb-2"></p>
+        <p id="restaurant-distance" class="text-muted small mb-0"></p>
+      </div>
+    </div>
+
+    <!-- Swipe Buttons -->
+    <div class="swipe-controls d-flex justify-content-around py-4 bg-light rounded-bottom-4 d-none" id="swipeControls">
+      <button id="dislike-btn" class="btn btn-lg btn-outline-danger rounded-3 px-4" disabled>
+        <i class="bi bi-x-lg"></i> Nope
+      </button>
+      <button id="like-btn" class="btn btn-lg btn-outline-success rounded-3 px-4" disabled>
+        <i class="bi bi-heart-fill"></i> Like
+      </button>
     </div>
   </div>
 </div>
+
 
 <!-- Start Session Modal -->
 <div class="modal fade" id="startSessionModal" tabindex="-1" aria-labelledby="startSessionModalLabel"
@@ -351,7 +353,7 @@
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxYA0OMGoBZ093MoeamguWrt7jfxl44EU&libraries=places&loading=async&callback=initMap"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const USER_ID = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
+    const USER_ID = {{#if user}}{{user.user_id}}{{else}}null{{/if }};
     let currentGroupId = null;
     let groupId = null;
     let socket = io();
@@ -432,6 +434,7 @@
       }
       document.getElementById('waitingOverlay')?.classList.remove('d-none');
       document.getElementById('recentMatchesCard')?.classList.add('d-none');
+      document.getElementById('topMatches')?.classList.add('d-none');
       document.getElementById('like-btn')?.setAttribute('disabled', 'true');
       document.getElementById('dislike-btn')?.setAttribute('disabled', 'true');
     }
