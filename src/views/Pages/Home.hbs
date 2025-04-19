@@ -1,168 +1,263 @@
-{{#> layout name="main" }}
+{{#> layout name="main_home" }}
 <!-- Bootstrap CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 
 <style>
-  body {
-    background: url('../../uploads/food_background.png') no-repeat center center fixed;
-    background-size: cover;
+  .home-wrapper {
+    position: relative;
+    height: 100vh;
+    width: 100vw;
   }
+
+  .start-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 600px;
+    background-color: rgba(0, 0, 0, 0.75);
+    border-radius: 1rem;
+    padding: 2rem;
+    text-align: center;
+    z-index: 10;
+  }
+
+  #recentMatchesCard {
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    width: 320px;
+    background-color: #212529;
+    color: white;
+    border-radius: 1rem;
+    padding: 1rem;
+    z-index: 10;
+  }
+
+  @media (max-width: 1250px) {
+    .start-center,
+    #recentMatchesCard {
+      position: static;
+      transform: none;
+      margin: 1rem auto;
+    }
+
+    .home-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+  .badge.rounded-pill {
+  font-size: 0.85rem;
+  padding: 0.4em 0.75em;
+}
+
 </style>
 
-<div class="container pt-3">
-    <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-6">
-            {{#if error}}
-            <div class="alert alert-danger">{{error}}</div>
-            {{/if}}
+<div class="home-wrapper">
+  <!-- Start Box -->
+  <div id="contentOverlay" class="start-center">
+    <h2 class="text-white mb-4">Ready to find your next meal?</h2>
+    <button class="btn btn-lg btn-primary px-4 py-2" data-bs-toggle="modal" data-bs-target="#startSessionModal">
+      <i class="bi bi-people-fill me-2"></i>Start!
+    </button>
+  </div>
 
-            <div class="card shadow-lg">
-                <!-- grey overlay -->
-                <div id="contentOverlay"
-                    class=""
-                    style="background-color: rgba(0,0,0,0.7); z-index: 10; border-radius: inherit;">
-                    <div class="text-center p-4 rounded bg-dark bg-opacity-75">
-                        <h2 class="text-white mb-4">Ready to find your next meal?</h2>
-                        <button class="btn btn-lg btn-primary px-4 py-2" data-bs-toggle="modal"
-                            data-bs-target="#startSessionModal">
-                            <i class="bi bi-people-fill me-2"></i>Start!
-                        </button>
-                    </div>
-                </div>
+  <!-- Stats Box -->
+  <div id="recentMatchesCard">
+    <h5 class="mb-3">Recent Matching Sessions</h5>
+    {{#if recentMatches.length}}
+      <div class="list-group">
+        {{#each recentMatches}}
+          <div class="list-group-item bg-secondary text-white rounded mb-2">
+            <h6 class="mb-1">{{#if group_name}}{{group_name}}{{else}}Matching Session{{/if}}</h6>
+            <p class="mb-1"><strong>Restaurant:</strong> {{restaurant_name}}</p>
+            <small><strong>Members:</strong> {{#each members}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</small>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <p>No recent matches yet. Start a new session!</p>
+    {{/if}}
+  </div>
 
-                <div class="card-body p-0 d-none" id="mainCard">
-                    <!-- main card -->
-                    <div id="restaurant-card" class="position-relative d-none">
-                        <div class="position-relative">
-                            <img id="restaurant-image" src="" class="card-img-top" alt="Restaurant Image"
-                                style="height: 250px; object-fit: cover;">
-                            <button id="info-btn"
-                                class="btn btn-light btn-sm rounded-3 position-absolute bottom-0 end-0 m-3 shadow">
-                                <i class="bi bi-info-lg"></i> Details
-                            </button>
-                        </div>
-                        <div class="p-3">
-                            <h4 id="restaurant-name"></h4>
-                            <div id="restaurant-badges" class="mb-2">
-                            </div>
-                            <p id="restaurant-description" class="mb-2"></p>
-                            <p id="restaurant-distance" class="text-muted small mb-0"></p>
-                        </div>
-                    </div>
+<div class="position-fixed top-50 start-0 translate-middle-y ms-3" style="z-index: 1040; max-width: 220px;">
+  <div class="card bg-dark text-white rounded-4 shadow p-3">
+    <h5 class="mb-3 text-center">🏆 Top Matches</h5>
 
-                    <div class="swipe-controls d-flex justify-content-around py-3 bg-light d-none" id="swipeControls">
-                        <button id="dislike-btn" class="btn btn-lg btn-outline-danger rounded-3 px-4" disabled>
-                            <i class="bi bi-x-lg"></i> Nope
-                        </button>
-                        <button id="like-btn" class="btn btn-lg btn-outline-success rounded-3 px-4" disabled>
-                            <i class="bi bi-heart-fill"></i> Like
-                        </button>
-                    </div>
-                </div>
+    {{#if topFriends.length}}
+      <div class="d-flex flex-column gap-3">
+        {{#each topFriends}}
+          <div class="d-flex align-items-center justify-content-between bg-primary bg-opacity-75 rounded px-3 py-2 shadow-sm">
+            <span class="fw-semibold text-white">{{this.matched_with}}</span>
+            <span class="badge bg-light text-dark rounded-pill">{{this.count}}</span>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <p class="text-muted text-center mb-0">No matches yet.</p>
+    {{/if}}
+  </div>
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+        <div class="card-body p-0 d-none" id="mainCard">
+          <!-- main card -->
+          <div id="restaurant-card" class="position-relative d-none">
+            <div class="position-relative">
+              <img id="restaurant-image" src="" class="card-img-top" alt="Restaurant Image"
+                style="height: 250px; object-fit: cover;">
+              <button id="info-btn" class="btn btn-light btn-sm rounded-3 position-absolute bottom-0 end-0 m-3 shadow">
+                <i class="bi bi-info-lg"></i> Details
+              </button>
             </div>
+            <div class="p-3">
+              <h4 id="restaurant-name"></h4>
+              <div id="restaurant-badges" class="mb-2">
+              </div>
+              <p id="restaurant-description" class="mb-2"></p>
+              <p id="restaurant-distance" class="text-muted small mb-0"></p>
+            </div>
+          </div>
+
+          <div class="swipe-controls d-flex justify-content-around py-3 bg-light d-none" id="swipeControls">
+            <button id="dislike-btn" class="btn btn-lg btn-outline-danger rounded-3 px-4" disabled>
+              <i class="bi bi-x-lg"></i> Nope
+            </button>
+            <button id="like-btn" class="btn btn-lg btn-outline-success rounded-3 px-4" disabled>
+              <i class="bi bi-heart-fill"></i> Like
+            </button>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Start Session Modal -->
-<div class="modal fade" id="startSessionModal" tabindex="-1" aria-labelledby="startSessionModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="startSessionModalLabel">Start Finding Restaurants</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="groupForm">
-                    <div class="mb-3">
-                        <label for="groupName" class="form-label">Group Name (optional)</label>
-                        <input type="text" class="form-control" id="groupName" placeholder="Enter a name for your group">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="location" class="form-label">Location</label>
-                        <input type="text" class="form-control" id="location" placeholder="Enter city or ZIP code" required>
-                        <div id="locationAutocomplete" class="list-group mt-2 d-none"></div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Friends (optional)</label>
-                        <div id="friendSelection">
-                            {{#if friends}}
+<div class="modal fade" id="startSessionModal" tabindex="-1" aria-labelledby="startSessionModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="startSessionModalLabel">Start Finding Restaurants</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="groupForm">
           <div class="mb-3">
-            <label for="friendUsername" class="form-label">Invite a Friend</label>
-            <select id="friendUsername" class="form-select">
-              <option value="">Select a friend</option>
-              {{#each friends}}
-                <option value="{{this.username}}">{{this.username}}</option>
-              {{/each}}
-            </select>
+            <label for="groupName" class="form-label">Group Name (optional)</label>
+            <input type="text" class="form-control" id="groupName" placeholder="Enter a name for your group">
           </div>
 
-                            <div id="selectedFriends" class="d-flex flex-wrap gap-2 my-2"></div>
-                            {{else}}
-                            <p class="text-muted fst-italic">No friends available. <a href="/friends">Add friends</a> to invite them.</p>
-                            {{/if}}
-                        </div>
-                    </div>
+          <div class="mb-3">
+            <label for="location" class="form-label">Location</label>
+            <input type="text" class="form-control" id="location" placeholder="Enter city or ZIP code" required>
+            <div id="locationAutocomplete" class="list-group mt-2 d-none"></div>
+          </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Restaurant Type (optional)</label>
-                        <div class="d-flex flex-wrap gap-2">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="cafe" id="cafe" checked>
-                                <label class="form-check-label" for="cafe">Cafe</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="bar" id="bar" checked>
-                                <label class="form-check-label" for="bar">Bar</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="restaurant" id="restaurant" checked>
-                                <label class="form-check-label" for="restaurant">Restaurant</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="fine_dining" id="fine_dining" checked>
-                                <label class="form-check-label" for="fine_dining">Fine Dining</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="bakery" id="bakery" checked>
-                                <label class="form-check-label" for="bakery">Bakery</label>
-                            </div>
-                        </div>
-                    </div>
-                </form>
+          <div class="mb-3">
+            <label class="form-label">Friends (optional)</label>
+            <div id="friendSelection">
+              {{#if friends}}
+              <div class="mb-3">
+                <label class="form-label">Invite Friends</label>
+                <div id="friendList" class="list-group">
+                  {{#each friends}}
+                  <button type="button" class="list-group-item list-group-item-action friend-option"
+                    data-username="{{this.username}}">
+                    {{this.username}}
+                  </button>
+                  {{/each}}
+                </div>
+
+                <div id="selectedFriends" class="d-flex flex-wrap gap-2 mt-2">
+                  <!-- Selected friend pills will go here -->
+                </div>
+              </div>
+
+
+
+              <div id="selectedFriends" class="d-flex flex-wrap gap-2 my-2"></div>
+              {{else}}
+              <p class="text-muted fst-italic">No friends available. <a href="/friends">Add friends</a> to invite them.
+              </p>
+              {{/if}}
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="startSessionBtn">Start Swiping</button>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Restaurant Type (optional)</label>
+            <div class="d-flex flex-wrap gap-2">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="cafe" id="cafe" checked>
+                <label class="form-check-label" for="cafe">Cafe</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="bar" id="bar" checked>
+                <label class="form-check-label" for="bar">Bar</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="restaurant" id="restaurant" checked>
+                <label class="form-check-label" for="restaurant">Restaurant</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="fine_dining" id="fine_dining" checked>
+                <label class="form-check-label" for="fine_dining">Fine Dining</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="bakery" id="bakery" checked>
+                <label class="form-check-label" for="bakery">Bakery</label>
+              </div>
             </div>
-        </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="startSessionBtn">Start Swiping</button>
+      </div>
     </div>
+  </div>
 </div>
+
 
 <!-- Match Modal -->
 <div class="modal fade" id="matchModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body text-center py-4">
-                <h3 class="display-6 mb-4">It's a Match! 🎉</h3>
-                <div class="match-restaurant mb-3">
-                    <img id="match-restaurant-image" class="rounded mb-2 img-fluid" alt="Restaurant"
-                        style="max-width: 100%;">
-                    <h4 id="match-restaurant-name"></h4>
-                    <p class="text-muted">Everyone likes this place!</p>
-                </div>
-                <div class="d-grid gap-2">
-                    <a id="match-restaurant-link" class="btn btn-primary" target="_blank">View on Google Maps</a>
-                    <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Continue Swiping</button>
-                </div>
-            </div>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body text-center py-4">
+        <h3 class="display-6 mb-4">It's a Match! 🎉</h3>
+        <div class="match-restaurant mb-3">
+          <img id="match-restaurant-image" class="rounded mb-2 img-fluid" alt="Restaurant" style="max-width: 100%;">
+          <h4 id="match-restaurant-name"></h4>
+          <p class="text-muted">Everyone likes this place!</p>
         </div>
+        <div class="d-grid gap-2">
+          <a id="match-restaurant-link" class="btn btn-primary" target="_blank">View on Google Maps</a>
+          <button class="btn btn-outline-secondary" id="continueSwipingModal" data-bs-dismiss="modal">Continue
+            Swiping</button>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 <!-- Waiting Overlay -->
-<div id="waitingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-75 text-white fw-bold fs-4 d-none" style="z-index: 1050;">
+<div id="waitingOverlay"
+  class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-75 text-white fw-bold fs-4 d-none"
+  style="z-index: 1050;">
   <h3 class="text-white mb-3">Waiting for friend to join...</h3>
   <button type="button" class="btn btn-danger" id="cancelInviteBtn">Cancel Invite</button>
 </div>
@@ -185,353 +280,362 @@
     </div>
   </div>
 
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const modalEl = document.getElementById('inviteModal');
-    console.log('🔍 Test: inviteModalEl is', modalEl);
-  });
-  
-</script>
-
-
-
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-<style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
     #restaurant-card {
-        transition: transform 0.3s ease;
+      transition: transform 0.3s ease;
     }
 
     .swipe-left {
-        transform: translateX(-150%) rotate(-15deg);
-        transition: all 0.5s ease;
+      transform: translateX(-150%) rotate(-15deg);
+      transition: all 0.5s ease;
     }
 
     .swipe-right {
-        transform: translateX(150%) rotate(15deg);
-        transition: all 0.5s ease;
+      transform: translateX(150%) rotate(15deg);
+      transition: all 0.5s ease;
     }
 
     #info-btn {
-        opacity: 0.9;
+      opacity: 0.9;
     }
 
     #info-btn:hover {
-        opacity: 1;
+      opacity: 1;
     }
 
     #contentOverlay {
-        transition: opacity 0.5s ease;
-        pointer-events: auto;
+      transition: opacity 0.5s ease;
+      pointer-events: auto;
     }
 
     #contentOverlay>* {
-        pointer-events: auto;
+      pointer-events: auto;
     }
 
     #contentOverlay[style*="display: none"] {
-        pointer-events: none;
+      pointer-events: none;
     }
 
     .btn:disabled {
-        opacity: 0.65;
-        cursor: not-allowed;
+      opacity: 0.65;
+      cursor: not-allowed;
     }
 
     #locationAutocomplete {
-        position: absolute;
-        z-index: 1000;
-        width: 100%;
-        max-height: 200px;
-        overflow-y: auto;
+      position: absolute;
+      z-index: 1000;
+      width: 100%;
+      max-height: 200px;
+      overflow-y: auto;
     }
 
     #locationAutocomplete .list-group-item {
-        cursor: pointer;
+      cursor: pointer;
     }
 
     #locationAutocomplete .list-group-item:hover {
-        background-color: #f8f9fa;
+      background-color: #f8f9fa;
     }
 
     /* Update cursor for buttons */
-    #like-btn, #dislike-btn {
-        cursor: pointer;
+    #like-btn,
+    #dislike-btn {
+      cursor: pointer;
     }
-</style>
+  </style>
 
-<!-- Socket.IO Client Script -->
+  <!-- Socket.IO Client Script -->
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxYA0OMGoBZ093MoeamguWrt7jfxl44EU&libraries=places&loading=async&callback=initMap"></script>
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const USER_ID = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
- let currentGroupId = null;
-let groupId = null;
-let socket = io();
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxYA0OMGoBZ093MoeamguWrt7jfxl44EU&libraries=places&loading=async&callback=initMap"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const USER_ID = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
+    let currentGroupId = null;
+    let groupId = null;
+    let socket = io();
+    const selectedFriends = new Set();
+    const likeBtn = document.getElementById('like-btn');
+    const dislikeBtn = document.getElementById('dislike-btn');
 
-function enableSwipingUI() {
-  const overlay = document.getElementById('contentOverlay');
-  document.getElementById('waitingOverlay')?.classList.add('d-none');
-  if (overlay) {
-    overlay.style.opacity = '0';
-    setTimeout(() => {
-      overlay.style.display = 'none';
-      document.getElementById('like-btn')?.removeAttribute('disabled');
-      document.getElementById('dislike-btn')?.removeAttribute('disabled');
-    }, 500);
-  }
-}
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.friend-option').forEach(button => {
+        button.addEventListener('click', () => {
+          const username = button.getAttribute('data-username');
 
-function showWaitingOverlay() {
-  const overlay = document.getElementById('contentOverlay');
-  if (overlay) {
-    overlay.style.display = 'flex';
-    overlay.style.opacity = '0.7';
-  }
-  document.getElementById('waitingOverlay')?.classList.remove('d-none');
-  document.getElementById('like-btn')?.setAttribute('disabled', 'true');
-  document.getElementById('dislike-btn')?.setAttribute('disabled', 'true');
-}
+          if (selectedFriends.has(username)) {
+            selectedFriends.delete(username);
+            button.classList.remove('active');
+          } else {
+            selectedFriends.add(username);
+            button.classList.add('active');
+          }
 
-function disableSwipingUI() {
-  document.getElementById('like-btn')?.setAttribute('disabled', 'true');
-  document.getElementById('dislike-btn')?.setAttribute('disabled', 'true');
-  const overlay = document.getElementById('contentOverlay');
-  if (overlay) {
-    overlay.style.display = 'flex';
-    overlay.style.opacity = '0.7';
-  }
-  document.getElementById('waitingOverlay')?.classList.remove('d-none');
-}
+          renderSelectedFriends();
+        });
+      });
+    });
 
+    function renderSelectedFriends() {
+      const container = document.getElementById('selectedFriends');
+      container.innerHTML = '';
 
+      selectedFriends.forEach(username => {
+        const pill = document.createElement('span');
+        pill.className = 'badge bg-primary text-white rounded-pill px-3 py-1';
+        pill.innerText = username;
+        container.appendChild(pill);
+      });
+    }
+    socket.on('invite-user-to-session', ({ groupId, lat, lng, types }) => {
+      const redirected = sessionStorage.getItem('redirectedFromInvite');
+      if (redirected === 'accepted') return;
 
-let inviteState = {
-   groupId: null,
-  lat: null,
-  lng: null,
-  types: [],
-  isSender: false
-};
+      sessionStorage.setItem('invitePayload', JSON.stringify({ groupId, lat, lng, types }));
+      sessionStorage.setItem('redirectedFromInvite', 'pending');
 
+      const modalEl = document.getElementById('inviteModal');
+      const joinBtn = document.getElementById('joinSwipeBtn');
+      if (!modalEl || !joinBtn) return;
 
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.show();
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const redirectFlag = sessionStorage.getItem('redirectedFromInvite');
-  if (redirectFlag !== 'accepted') {
-    sessionStorage.removeItem('invitePayload'); // only clear if not restoring
-  }
+      joinBtn.onclick = () => {
+        sessionStorage.setItem('redirectedFromInvite', 'accepted');
+        modal.hide();
+        document.body.classList.remove('modal-open');
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        window.location.href = '/home'; // redirect to home to begin session
+      };
+    });
 
- 
- inviteState = {
-  groupId: null,
-  lat: null,
-  lng: null,
-  types: [],
-  isSender: false
-};
-
-const cancelBtn = document.getElementById('cancelInviteBtn');
-if (cancelBtn) {
-  cancelBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const groupId = inviteState.groupId;
-    if (groupId && USER_ID) {
-      socket.emit('cancel-swipe-session', {groupId, userId: USER_ID });
+    function enableSwipingUI() {
+      const overlay = document.getElementById('contentOverlay');
+      document.getElementById('waitingOverlay')?.classList.add('d-none');
+      if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+          overlay.style.display = 'none';
+          document.getElementById('like-btn')?.removeAttribute('disabled');
+          document.getElementById('dislike-btn')?.removeAttribute('disabled');
+        }, 500);
+      }
     }
 
-    // 💥 Fully clear session data
-    sessionStorage.clear(); // ← clears all keys including invitePayload, redirectedFromInvite, etc.
-
-    // 💥 Reset internal invite state
-inviteState = {
-  groupId: null,
-  lat: null,
-  lng: null,
-  types: [],
-  isSender: false
-};
-
-
-    // 💥 Hide invite modal if present
-    const modalEl = document.getElementById('inviteModal');
-    if (modalEl) {
-      const modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
-      modal.hide();
+    function showWaitingOverlay() {
+      const overlay = document.getElementById('contentOverlay');
+      if (overlay) {
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '0.7';
+      }
+      document.getElementById('waitingOverlay')?.classList.remove('d-none');
+      document.getElementById('recentMatchesCard')?.classList.add('d-none');
+      document.getElementById('like-btn')?.setAttribute('disabled', 'true');
+      document.getElementById('dislike-btn')?.setAttribute('disabled', 'true');
     }
 
-    document.body.classList.remove('modal-open');
-    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-
-    // 💥 Hide swiping overlays
-    document.getElementById('waitingOverlay')?.classList.add('d-none');
-    const overlay = document.getElementById('contentOverlay');
-    if (overlay) {
-      overlay.style.display = 'none';
-      overlay.style.opacity = '0';
+    function disableSwipingUI() {
+      document.getElementById('like-btn')?.setAttribute('disabled', 'true');
+      document.getElementById('dislike-btn')?.setAttribute('disabled', 'true');
+      const overlay = document.getElementById('contentOverlay');
+      if (overlay) {
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '0.7';
+      }
+      document.getElementById('waitingOverlay')?.classList.remove('d-none');
     }
 
-    // 💥 Redirect home
-    setTimeout(() => {
-      window.location.href = '/home';
-    }, 300);
-  });
-}
-let groupCreated = false;
 
-  const inviteBtn = document.getElementById('startSessionBtn');
-  if (inviteBtn) {
-    inviteBtn.addEventListener('click', async () => {
+
+    let inviteState = {
+      groupId: null,
+      lat: null,
+      lng: null,
+      types: [],
+      isSender: false
+    };
+
+
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const redirectFlag = sessionStorage.getItem('redirectedFromInvite');
+      if (redirectFlag !== 'accepted') {
+        sessionStorage.removeItem('invitePayload'); // only clear if not restoring
+      }
+
+
+      inviteState = {
+        groupId: null,
+        lat: null,
+        lng: null,
+        types: [],
+        isSender: false
+      };
+
+      const cancelBtn = document.getElementById('cancelInviteBtn');
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const groupId = inviteState.groupId;
+          if (groupId && USER_ID) {
+            socket.emit('cancel-swipe-session', { groupId, userId: USER_ID });
+          }
+
+          // 💥 Fully clear session data
+          sessionStorage.clear(); // ← clears all keys including invitePayload, redirectedFromInvite, etc.
+
+          // 💥 Reset internal invite state
+          inviteState = {
+            groupId: null,
+            lat: null,
+            lng: null,
+            types: [],
+            isSender: false
+          };
+
+
+          // 💥 Hide invite modal if present
+          const modalEl = document.getElementById('inviteModal');
+          if (modalEl) {
+            const modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.hide();
+
+          }
+
+          document.body.classList.remove('modal-open');
+          document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+
+          // 💥 Hide swiping overlays
+          document.getElementById('waitingOverlay')?.classList.add('d-none');
+          const overlay = document.getElementById('contentOverlay');
+          if (overlay) {
+            overlay.style.display = 'none';
+            overlay.style.opacity = '0';
+          }
+
+          // 💥 Redirect home
+          setTimeout(() => {
+            window.location.href = '/home';
+          }, 300);
+        });
+      }
+      let groupCreated = false;
+
+      const inviteBtn = document.getElementById('startSessionBtn');
+      if (inviteBtn) {
+        inviteBtn.addEventListener('click', async () => {
+          document.getElementById('restaurant-card')?.classList.remove('d-none');
+          document.getElementById('mainCard')?.classList.remove('d-none');
+          document.getElementById('swipeControls')?.classList.remove('d-none');
+          showWaitingOverlay();
+        });
+
+      }
+
+
+
+    });
+
+
+
+    socket.on('start-swiping', ({ lat, lng, types }) => {
+      console.log('🚀 All users ready — swiping begins!');
+      console.log('🎯 Received filter types on receiver:', types);
+
+      inviteState.lat = lat;
+      inviteState.lng = lng;
+      inviteState.types = types;
+
+      if (!currentGroupId && groupId) {
+        currentGroupId = groupId; // 🔥 Ensure groupId is set for receivers
+      }
+
+      document.getElementById('waitingOverlay')?.classList.add('d-none');
+      document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+
+      // ✅ Hide generic gray content overlay
+      const contentOverlay = document.getElementById('contentOverlay');
+      if (contentOverlay) {
+        contentOverlay.style.opacity = '0';
+        setTimeout(() => {
+          contentOverlay.style.display = 'none';
+          likeBtn?.removeAttribute('disabled');
+          dislikeBtn?.removeAttribute('disabled');
+        }, 500);
+      }
+
+      enableSwipingUI();
       document.getElementById('restaurant-card')?.classList.remove('d-none');
       document.getElementById('mainCard')?.classList.remove('d-none');
       document.getElementById('swipeControls')?.classList.remove('d-none');
-      showWaitingOverlay();
-  if (groupCreated) return; // 🛑 prevent re-submission
-  groupCreated = true;
-      const groupName = document.getElementById('groupName')?.value || 'Session';
-      const location = document.getElementById('location')?.value;
-      const friendUsername = document.getElementById('friendUsername')?.value;
-      const selectedTypes = Array.from(document.querySelectorAll('.form-check-input:checked'))
-        .map(cb => cb.value)
-        .filter(v => v !== 'on');
 
-      const geoResults = await new Promise((resolve, reject) => {
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ address: location }, (results, status) => {
-          if (status === 'OK') resolve(results);
-          else reject(status);
-        });
-      });
+      if (lat && lng) {
+        console.log('📍 Requesting restaurant list...');
+        socket.emit('request-restaurant-list', { groupId: currentGroupId });
+      }
 
-      const geocodedLat = geoResults[0].geometry.location.lat();
-      const geocodedLng = geoResults[0].geometry.location.lng();
+      likeBtn.removeAttribute('disabled');
+      dislikeBtn.removeAttribute('disabled');
+    });
 
-      const res = await fetch('/groups', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: groupName, location, lat: geocodedLat, lng: geocodedLng })
-      });
+    socket.on('swipe-session-cancelled', ({ groupId }) => {
+      console.log('❌ Session was cancelled for group:', groupId);
 
-      const data = await res.json();
-      if (!data.success) return alert('Group creation failed');
 
-    const groupId = data.group_id;
-currentGroupId = data.group_id
+      // Clear invite data
+      sessionStorage.removeItem('invitePayload');
+      sessionStorage.removeItem('redirectedFromInvite');
 
       inviteState = {
-  groupId: groupId,
-  lat: geocodedLat,
-  lng: geocodedLng,
-  types: selectedTypes,
-  senderId: USER_ID,     
-  isSender: true
-};
-sessionStorage.setItem('invitePayload', JSON.stringify(inviteState));
+        groupId: null,
+        lat: null,
+        lng: null,
+        types: [],
+        isSender: false
+      };
 
 
-      socket.emit('join-session', { groupId, userId: USER_ID });
-
-      if (friendUsername) {
-socket.emit('invite-user-by-username', {
-  username: friendUsername,
-  groupId,
-  lat: geocodedLat,
-  lng: geocodedLng,
-  types: selectedTypes,
-  senderId: USER_ID  // include this in the payload!
-});
+      // Hide invite modal
+      const modalEl = document.getElementById('inviteModal');
+      if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
 
       }
+      const modalE = document.getElementById('waitingOverlay');
+      if (modalE) {
+        const modal = bootstrap.Modal.getInstance(modalE);
+        modal.hide();
+      }
+
+      sessionStorage.setItem('redirectedFromInvite', 'cancelled');
+
+      disableSwipingUI();
     });
-  }
-});
+    socket.on('match-found', ({ restaurant }) => {
+      if (!restaurant) return;
+      console.log('🎉 Match received on client:', restaurant);
 
-socket.on('friend-accepted-invite', () => {
-  enableSwipingUI();
-        document.getElementById('restaurant-card')?.classList.remove('d-none');
-      document.getElementById('mainCard')?.classList.remove('d-none');
-      document.getElementById('swipeControls')?.classList.remove('d-none');
-});
+      // Update modal content
+      document.getElementById('match-restaurant-name').textContent = restaurant.restaurant_name;
 
-socket.on('start-swiping', ({ lat, lng, types }) => {
-  console.log('🚀 All users ready — swiping begins!');
-  console.log('🎯 Received filter types on receiver:', types);
-  document.getElementById('waitingOverlay')?.classList.add('d-none');
-  
-  // 💡 Only now remove the gray overlay
-  contentOverlay.style.opacity = '0';
-  setTimeout(() => {
-    contentOverlay.style.display = 'none';
-    likeBtn.removeAttribute('disabled');
-    dislikeBtn.removeAttribute('disabled');
-  }, 500);
+      const matchImage = document.getElementById('match-restaurant-image');
+      if (restaurant.photoUrl) {
+        matchImage.src = restaurant.photoUrl;
+      } else {
+        matchImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
+      }
 
-  if (lat && lng) {
-    console.log('📍 Requesting restaurant list...');
-    // Request the restaurant list instead of searching directly
-    socket.emit('request-restaurant-list', { groupId: currentGroupId });
-  }
+      document.getElementById('match-restaurant-link').href = `https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`;
 
-  likeBtn.removeAttribute('disabled');
-  dislikeBtn.removeAttribute('disabled');
-});
-
-socket.on('swipe-session-cancelled', ({ groupId }) => {
-  console.log('❌ Session was cancelled for group:', groupId);
-
-
-  // Clear invite data
-  sessionStorage.removeItem('invitePayload');
-  sessionStorage.removeItem('redirectedFromInvite');
-
-inviteState = {
-  groupId: null,
-  lat: null,
-  lng: null,
-  types: [],
-  isSender: false
-};
-
-
-  // Hide invite modal
-  const modalEl = document.getElementById('inviteModal');
-  if (modalEl) {
-    const modal = bootstrap.Modal.getInstance(modalEl);
-    modal.hide();
-  }
-  const modalE = document.getElementById('waitingOverlay');
-  if (modalE) {
-    const modal = bootstrap.Modal.getInstance(modalE);
-    modal.hide();
-  }
- 
-sessionStorage.setItem('redirectedFromInvite', 'cancelled');
-
-  disableSwipingUI();
-});
-socket.on('match-found', ({ restaurant }) => {
-  if (!restaurant) return;
-console.log('🎉 Match received on client:', restaurant);
-
-  // Update modal content
-  document.getElementById('match-restaurant-name').textContent = restaurant.restaurant_name;
-
-  const matchImage = document.getElementById('match-restaurant-image');
-  if (restaurant.photoUrl) {
-    matchImage.src = restaurant.photoUrl;
-  } else {
-    matchImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
-  }
-
-  document.getElementById('match-restaurant-link').href = `https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`;
-
-  // Show modal
-  const matchModal = new bootstrap.Modal(document.getElementById('matchModal'));
-  matchModal.show();
-});
+      // Show modal
+      const matchModal = new bootstrap.Modal(document.getElementById('matchModal'));
+      matchModal.show();
+    });
 
 
 
@@ -545,561 +649,601 @@ console.log('🎉 Match received on client:', restaurant);
 
     let currentRestaurants = [];
     let currentIndex = 0;
- 
-    let selectedFriends = [];
+
+
     let service;
     let geocoder;
     let autocompleteService;
     let mapDiv;
 
     async function initMap() {
-        console.log("Google Maps API loaded successfully");
-        
-        // Initialize Google Maps services
-        geocoder = new google.maps.Geocoder();
-        
-        // Create a map div for Places service (required)
-        mapDiv = document.createElement('div');
-        mapDiv.style.display = 'none';
-        document.body.appendChild(mapDiv);
-        
-        // Create a hidden map instance
-        const map = new google.maps.Map(mapDiv, {
-            center: { lat: 0, lng: 0 },
-            zoom: 2
-        });
-        
-        // Initialize services with the map
-        service = new google.maps.places.PlacesService(map);
-        autocompleteService = new google.maps.places.AutocompleteService();
-    
-        // Initialize UI elements
-        const likeBtn = document.getElementById('like-btn');
-        const dislikeBtn = document.getElementById('dislike-btn');
-        const infoBtn = document.getElementById('info-btn');
-        const restaurantCard = document.getElementById('restaurant-card');
-        const contentOverlay = document.getElementById('contentOverlay');
-        const startSessionBtn = document.getElementById('startSessionBtn');
-        const startSessionModal = document.getElementById('startSessionModal');
-        const matchModal = new bootstrap.Modal(document.getElementById('matchModal'));
-        const locationInput = document.getElementById('location');
-        const locationAutocomplete = document.getElementById('locationAutocomplete');
-        const addFriendBtn = document.getElementById('addFriendBtn');
-        const friendSelect = document.getElementById('friendSelect');
-        const selectedFriendsDiv = document.getElementById('selectedFriends');
-        const friendUsername = document.getElementById('friendUsername').value || null;
+      console.log("Google Maps API loaded successfully");
 
+      // Initialize Google Maps services
+      geocoder = new google.maps.Geocoder();
 
-        const modal = new bootstrap.Modal(startSessionModal);
+      // Create a map div for Places service (required)
+      mapDiv = document.createElement('div');
+      mapDiv.style.display = 'none';
+      document.body.appendChild(mapDiv);
 
-        // Setup location autocomplete
-        locationInput.addEventListener('input', function() {
-            if (this.value.length > 2) {
-                autocompleteService.getPlacePredictions({
-                    input: this.value,
-                    types: ['(cities)']
-                }, (predictions, status) => {
-                    if (status === google.maps.places.PlacesServiceStatus.OK) {
-                        locationAutocomplete.innerHTML = '';
-                        predictions.forEach(prediction => {
-                            const item = document.createElement('a');
-                            item.className = 'list-group-item list-group-item-action';
-                            item.textContent = prediction.description;
-                            item.addEventListener('click', () => {
-                                locationInput.value = prediction.description;
-                                locationAutocomplete.classList.add('d-none');
-                                geocoder.geocode({ placeId: prediction.place_id }, (results, status) => {
-                                    if (status === 'OK') {
-                                        const latlng = {
-                                            lat: results[0].geometry.location.lat(),
-                                            lng: results[0].geometry.location.lng()
-                                        };
-                                        console.log('Location found:', latlng);
-                                    }
-                                });
-                            });
-                            locationAutocomplete.appendChild(item);
-                        });
-                        locationAutocomplete.classList.remove('d-none');
-                    }
-                });
-            } else {
-                locationAutocomplete.classList.add('d-none');
-            }
-        });
-
-        // Setup friend selection
-        if (addFriendBtn && friendSelect) {
-            addFriendBtn.addEventListener('click', function() {
-                const friendId = friendSelect.value;
-                const friendName = friendSelect.options[friendSelect.selectedIndex].text;
-                
-                if (friendId && !selectedFriends.some(f => f.id === friendId)) {
-                    selectedFriends.push({
-                        id: friendId,
-                        name: friendName
-                    });
-                    
-                    updateSelectedFriendsList();
-                }
-            });
-        }
-
-        function updateSelectedFriendsList() {
-            if (selectedFriendsDiv) {
-                selectedFriendsDiv.innerHTML = '';
-                
-                selectedFriends.forEach(friend => {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge bg-primary d-flex align-items-center';
-                    badge.innerHTML = `
-                        ${friend.name}
-                        <button type="button" class="btn-close btn-close-white ms-2" aria-label="Remove friend"></button>
-                    `;
-                    
-                    const closeBtn = badge.querySelector('.btn-close');
-                    closeBtn.addEventListener('click', () => {
-                        selectedFriends = selectedFriends.filter(f => f.id !== friend.id);
-                        updateSelectedFriendsList();
-                    });
-                    
-                    selectedFriendsDiv.appendChild(badge);
-                });
-            }
-        }
-
-
-startSessionBtn.addEventListener('click', async function () {
-  const location = locationInput.value;
-  const groupName = document.getElementById('groupName')?.value || 'Solo Session';
-
-  if (!location) {
-    alert('Please enter a location');
-    return;
-  }
-
-  // Get friend IDs
-  const friendIds = selectedFriends.map(f => f.id);
-
-  // Geocode the location to get lat/lng
-  try {
-    const geoResults = await new Promise((resolve, reject) => {
-      geocoder.geocode({ address: location }, (results, status) => {
-        if (status === 'OK') resolve(results);
-        else reject(status);
+      // Create a hidden map instance
+      const map = new google.maps.Map(mapDiv, {
+        center: { lat: 0, lng: 0 },
+        zoom: 2
       });
-    });
 
-    const geocodedLat = geoResults[0].geometry.location.lat();
-    const geocodedLng = geoResults[0].geometry.location.lng();
-    console.log('Geocoded:', geocodedLat, geocodedLng);
+      // Initialize services with the map
+      service = new google.maps.places.PlacesService(map);
+      autocompleteService = new google.maps.places.AutocompleteService();
 
-    // Send group creation request to backend
-    const response = await fetch('/groups', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: groupName,
-        location: location,
-        friends: friendIds,
-        lat: geocodedLat,
-        lng: geocodedLng
-      })
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      currentGroupId = data.group_id;
-
-      console.log('Group created with ID:', currentGroupId);
-      searchNearbyRestaurants({ lat: geocodedLat, lng: geocodedLng });
-
-      contentOverlay.style.opacity = '0';
-      setTimeout(() => {
-        contentOverlay.style.display = 'none';
-        likeBtn.removeAttribute('disabled');
-        dislikeBtn.removeAttribute('disabled');
-      }, 500);
-
-      modal.hide();
-      document.body.classList.remove('modal-open');
-document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-
-    } else {
-      console.error('Group creation failed:', data.error);
-      alert('Failed to start session');
-    }
-  } catch (err) {
-    console.error('Geocoding or session start error:', err);
-    alert('Failed to start session');
-  }
-});
+      // Initialize UI elements
+      const likeBtn = document.getElementById('like-btn');
+      const dislikeBtn = document.getElementById('dislike-btn');
+      const infoBtn = document.getElementById('info-btn');
+      const restaurantCard = document.getElementById('restaurant-card');
+      const contentOverlay = document.getElementById('contentOverlay');
+      const startSessionBtn = document.getElementById('startSessionBtn');
+      const startSessionModal = document.getElementById('startSessionModal');
+      const matchModal = new bootstrap.Modal(document.getElementById('matchModal'));
+      const locationInput = document.getElementById('location');
+      const locationAutocomplete = document.getElementById('locationAutocomplete');
 
 
-       
 
-    function searchNearbyRestaurants(location) {
+
+
+      const modal = new bootstrap.Modal(startSessionModal);
+
+      // Setup location autocomplete
+      locationInput.addEventListener('input', function () {
+        if (this.value.length > 2) {
+          autocompleteService.getPlacePredictions({
+            input: this.value,
+            types: ['(cities)']
+          }, (predictions, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK) {
+              locationAutocomplete.innerHTML = '';
+              predictions.forEach(prediction => {
+                const item = document.createElement('a');
+                item.className = 'list-group-item list-group-item-action';
+                item.textContent = prediction.description;
+                item.addEventListener('click', () => {
+                  locationInput.value = prediction.description;
+                  locationAutocomplete.classList.add('d-none');
+                  geocoder.geocode({ placeId: prediction.place_id }, (results, status) => {
+                    if (status === 'OK') {
+                      const latlng = {
+                        lat: results[0].geometry.location.lat(),
+                        lng: results[0].geometry.location.lng()
+                      };
+                      console.log('Location found:', latlng);
+                    }
+                  });
+                });
+                locationAutocomplete.appendChild(item);
+              });
+              locationAutocomplete.classList.remove('d-none');
+            }
+          });
+        } else {
+          locationAutocomplete.classList.add('d-none');
+        }
+      });
+
+
+
+
+
+
+      let groupCreated = false;
+
+      startSessionBtn.addEventListener('click', async function () {
+        const location = locationInput.value;
+        const groupName = document.getElementById('groupName')?.value || 'Solo Session';
+
+        if (!location) {
+          alert('Please enter a location');
+          return;
+        }
+
+        if (groupCreated) return; // 🛑 prevent re-submission
+        groupCreated = true;
+
+
+
+        // Convert usernames to user IDs before making group request
+        const invitedUsernames = Array.from(selectedFriends);
+
+        const res = await fetch('/users/lookup-ids', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usernames: invitedUsernames })
+        });
+
+        const { userIds } = await res.json(); // Should return: { userIds: [id1, id2, ...] }
+
+        try {
+          const geoResults = await new Promise((resolve, reject) => {
+            geocoder.geocode({ address: location }, (results, status) => {
+              if (status === 'OK') resolve(results);
+              else reject(status);
+            });
+          });
+
+          const geocodedLat = geoResults[0].geometry.location.lat();
+          const geocodedLng = geoResults[0].geometry.location.lng();
+          console.log('Geocoded:', geocodedLat, geocodedLng);
+
+          // Create the group
+          const response = await fetch('/groups', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: groupName,
+              location: location,
+              friends: userIds,
+              lat: geocodedLat,
+              lng: geocodedLng
+            })
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            const groupId = data.group_id;
+            currentGroupId = groupId;
+
+            inviteState = {
+              groupId: groupId,
+              lat: geocodedLat,
+              lng: geocodedLng,
+              types: Array.from(document.querySelectorAll('.form-check-input:checked'))
+                .map(cb => cb.value)
+                .filter(v => v !== 'on'),
+              senderId: USER_ID,
+              isSender: true
+            };
+            sessionStorage.setItem('invitePayload', JSON.stringify(inviteState));
+
+            // Join group and register users
+            socket.emit('join-session', { groupId, userId: USER_ID });
+            socket.emit('register-session-users', {
+              groupId: groupId,
+              userIds: [USER_ID, ...userIds]
+            });
+            socket.emit('ready-to-swipe', {
+              groupId: groupId,
+              userId: USER_ID,
+              lat: geocodedLat,
+              lng: geocodedLng,
+              types: inviteState.types
+            });
+
+            // Invite friends by username
+            Array.from(selectedFriends).forEach(username => {
+              socket.emit('invite-user-by-username', {
+                username,
+                groupId,
+                lat: geocodedLat,
+                lng: geocodedLng,
+                types: inviteState.types,
+                senderId: USER_ID
+              });
+            });
+
+            // Search restaurants and update UI
+            console.log('Group created with ID:', groupId);
+            searchNearbyRestaurants({ lat: geocodedLat, lng: geocodedLng });
+
+            contentOverlay.style.opacity = '0';
+            setTimeout(() => {
+              contentOverlay.style.display = 'none';
+              likeBtn.removeAttribute('disabled');
+              dislikeBtn.removeAttribute('disabled');
+            }, 500);
+
+            modal.hide();
+            document.body.classList.remove('modal-open');
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+          } else {
+            console.error('Group creation failed:', data.error);
+            alert('Failed to start session');
+          }
+        } catch (err) {
+          console.error('Geocoding or session start error:', err);
+          alert('Failed to start session');
+        }
+      });
+
+
+
+
+
+
+      function searchNearbyRestaurants(location) {
         console.log('Starting restaurant search at location:', location);
-        
+
         const request = {
-            location: location,
-            radius: 5000,
-            type: 'restaurant'
+          location: location,
+          radius: 5000,
+          type: 'restaurant'
         };
-        
+
         // Define valid restaurant types
         const validTypes = [
-            'restaurant',
-            'cafe',
-            'bar',
-            'bakery',
-            'meal_delivery',
-            'meal_takeaway',
-            'food'
+          'restaurant',
+          'cafe',
+          'bar',
+          'bakery',
+          'meal_delivery',
+          'meal_takeaway',
+          'food'
         ];
-        
+
         // Get selected types from checkboxes
         const selectedTypes = Array.from(document.querySelectorAll('.form-check-input:checked'))
-            .map(cb => cb.value)
-            .filter(v => v !== 'on');
-        
+          .map(cb => cb.value)
+          .filter(v => v !== 'on');
+
         console.log('Selected types:', selectedTypes);
-        
+
         // Only add keyword filter if specific types are selected
         if (selectedTypes.length > 0) {
-            request.keyword = selectedTypes.join(' ');
+          request.keyword = selectedTypes.join(' ');
         }
-        
-        service.nearbySearch(request, (results, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK) {
-                console.log('Found restaurants:', results.length);
-                
-                // Filter to only include places matching our desired types
-                let filteredRestaurants = results.filter(place => {
-                    // First check if the place is operational
-                    if (place.business_status !== 'OPERATIONAL') {
-                        return false;
-                    }
-                    
-                    // If no types are selected, only show actual restaurants
-                    if (selectedTypes.length === 0) {
-                        return place.types && 
-                               place.types.some(type => validTypes.includes(type));
-                    }
-                    
-                    // If types are selected, ensure the place matches at least one selected type
-                    return place.types && 
-                           place.types.some(type => selectedTypes.includes(type));
-                });
-                
-                // Sort restaurants consistently by place_id to ensure same order for all users
-                filteredRestaurants.sort((a, b) => a.place_id.localeCompare(b.place_id));
-                
-                console.log('Filtered and sorted restaurants:', filteredRestaurants.length);
-                
-                if (filteredRestaurants.length > 0) {
-                    // Share the restaurant list with the group
-                    socket.emit('share-restaurant-list', {
-                        groupId: currentGroupId,
-                        restaurants: filteredRestaurants
-                    });
-                    
-                    // Set local restaurants
-                    currentRestaurants = filteredRestaurants;
-                    currentIndex = 0;
-                    showNextRestaurant();
-                } else {
-                    alert('No restaurants found matching your criteria. Try adjusting your filters or location.');
-                }
-            } else {
-                console.error('Places API error:', status);
-                alert('Failed to fetch restaurants. Please try again.');
-            }
-        });
-    }
 
-    // Add socket event handlers for restaurant list synchronization
-    socket.on('need-restaurant-list', ({ groupId }) => {
+        service.nearbySearch(request, (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK) {
+            console.log('Found restaurants:', results.length);
+
+            // Filter to only include places matching our desired types
+            let filteredRestaurants = results.filter(place => {
+              // First check if the place is operational
+              if (place.business_status !== 'OPERATIONAL') {
+                return false;
+              }
+
+              // If no types are selected, only show actual restaurants
+              if (selectedTypes.length === 0) {
+                return place.types &&
+                  place.types.some(type => validTypes.includes(type));
+              }
+
+              // If types are selected, ensure the place matches at least one selected type
+              return place.types &&
+                place.types.some(type => selectedTypes.includes(type));
+            });
+
+            // Sort restaurants consistently by place_id to ensure same order for all users
+            filteredRestaurants.sort((a, b) => a.place_id.localeCompare(b.place_id));
+
+            console.log('Filtered and sorted restaurants:', filteredRestaurants.length);
+
+            if (filteredRestaurants.length > 0) {
+              // Share the restaurant list with the group
+              socket.emit('share-restaurant-list', {
+                groupId: currentGroupId,
+                restaurants: filteredRestaurants
+              });
+
+              // Set local restaurants
+              currentRestaurants = filteredRestaurants;
+              currentIndex = 0;
+              showNextRestaurant();
+            } else {
+              alert('No restaurants found matching your criteria. Try adjusting your filters or location.');
+            }
+          } else {
+            console.error('Places API error:', status);
+            alert('Failed to fetch restaurants. Please try again.');
+          }
+        });
+      }
+
+      // Add socket event handlers for restaurant list synchronization
+      socket.on('need-restaurant-list', ({ groupId }) => {
         console.log('Group needs restaurant list, initiating search...');
         if (inviteState.lat && inviteState.lng) {
-            searchNearbyRestaurants({ 
-                lat: parseFloat(inviteState.lat), 
-                lng: parseFloat(inviteState.lng) 
-            });
+          searchNearbyRestaurants({
+            lat: parseFloat(inviteState.lat),
+            lng: parseFloat(inviteState.lng)
+          });
         }
-    });
+      });
 
-    socket.on('restaurant-list', (restaurants) => {
+      socket.on('restaurant-list', (restaurants) => {
         console.log('Received synchronized restaurant list:', restaurants.length);
         currentRestaurants = restaurants;
         currentIndex = 0;
         showNextRestaurant();
-    });
+      });
 
-    function showNextRestaurant() {
+      function showNextRestaurant() {
         console.log('Showing restaurant at index:', currentIndex);
         if (currentIndex >= currentRestaurants.length) {
-            console.log('No more restaurants to show');
-            alert('No more restaurants to show!');
-            return;
+          console.log('No more restaurants to show');
+          alert('No more restaurants to show!');
+          return;
         }
 
         const restaurant = currentRestaurants[currentIndex];
         console.log('Current restaurant:', restaurant);
-        
+
         try {
-            // Get detailed place information
-            const request = {
-                placeId: restaurant.place_id,
-                fields: [
-                    'name',
-                    'rating',
-                    'formatted_address',
-                    'photos',
-                    'price_level',
-                    'website',
-                    'url',
-                    'opening_hours',
-                    'reviews'
-                ]
-            };
+          // Get detailed place information
+          const request = {
+            placeId: restaurant.place_id,
+            fields: [
+              'name',
+              'rating',
+              'formatted_address',
+              'photos',
+              'price_level',
+              'website',
+              'url',
+              'opening_hours',
+              'reviews'
+            ]
+          };
 
-            service.getDetails(request, (place, status) => {
-                console.log('Place details status:', status);
-                if (status === google.maps.places.PlacesServiceStatus.OK) {
-                    console.log('Place details:', place);
-                    
-                    // Update restaurant name
-                    document.getElementById('restaurant-name').textContent = place.name;
-                    
-                    // Update badges (price and rating)
-                    const badges = [];
-                    if (place.price_level) {
-                        badges.push(`<span class="badge bg-success me-1">${'$'.repeat(place.price_level)}</span>`);
-                    }
-                    if (place.rating) {
-                        badges.push(`<span class="badge bg-secondary me-1">${place.rating} ★</span>`);
-                    }
-                    if (place.opening_hours && place.opening_hours.isOpen) {
-                        badges.push(`<span class="badge bg-success me-1">Open Now</span>`);
-                    }
-                    document.getElementById('restaurant-badges').innerHTML = badges.join('');
-                    
-                    // Update description
-                    document.getElementById('restaurant-description').textContent = place.formatted_address || restaurant.vicinity || 'No address available';
-                    
-                    // Update image
-                    const restaurantImage = document.getElementById('restaurant-image');
-                    if (place.photos && place.photos[0]) {
-                        try {
-                            restaurantImage.src = place.photos[0].getUrl({
-                                maxWidth: 800,
-                                maxHeight: 600
-                            });
-                        } catch (error) {
-                            console.error('Error getting photo URL:', error);
-                            restaurantImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
-                        }
-                    } else {
-                        // Set a default image if no photos are available
-                        restaurantImage.src = 'https://via.placeholder.com/800x600?text=No+Image+Available';
-                    }
+          service.getDetails(request, (place, status) => {
+            console.log('Place details status:', status);
+            if (status === google.maps.places.PlacesServiceStatus.OK) {
+              console.log('Place details:', place);
 
-                    // Update info button to link to Google Maps
-                    infoBtn.onclick = () => {
-                        if (place.url) {
-                            window.open(place.url, '_blank');
-                        } else {
-                            window.open(`https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`, '_blank');
-                        }
-                    };
+              // Update restaurant name
+              document.getElementById('restaurant-name').textContent = place.name;
+
+              // Update badges (price and rating)
+              const badges = [];
+              if (place.price_level) {
+                badges.push(`<span class="badge bg-success me-1">${'$'.repeat(place.price_level)}</span>`);
+              }
+              if (place.rating) {
+                badges.push(`<span class="badge bg-secondary me-1">${place.rating} ★</span>`);
+              }
+              if (place.opening_hours && place.opening_hours.isOpen) {
+                badges.push(`<span class="badge bg-success me-1">Open Now</span>`);
+              }
+              document.getElementById('restaurant-badges').innerHTML = badges.join('');
+
+              // Update description
+              document.getElementById('restaurant-description').textContent = place.formatted_address || restaurant.vicinity || 'No address available';
+
+              // Update image
+              const restaurantImage = document.getElementById('restaurant-image');
+              if (place.photos && place.photos[0]) {
+                try {
+                  restaurantImage.src = place.photos[0].getUrl({
+                    maxWidth: 800,
+                    maxHeight: 600
+                  });
+                } catch (error) {
+                  console.error('Error getting photo URL:', error);
+                  restaurantImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
+                }
+              } else {
+                // Set a default image if no photos are available
+                restaurantImage.src = 'https://via.placeholder.com/800x600?text=No+Image+Available';
+              }
+
+              // Update info button to link to Google Maps
+              infoBtn.onclick = () => {
+                if (place.url) {
+                  window.open(place.url, '_blank');
                 } else {
-                    console.error('Failed to get place details:', status);
-                    
-                    // Use basic restaurant info from search results
-                    document.getElementById('restaurant-name').textContent = restaurant.name;
-                    
-                    const badges = [];
-                    if (restaurant.price_level) {
-                        badges.push(`<span class="badge bg-success me-1">${'$'.repeat(restaurant.price_level)}</span>`);
-                    }
-                    if (restaurant.rating) {
-                        badges.push(`<span class="badge bg-secondary me-1">${restaurant.rating} ★</span>`);
-                    }
-                    document.getElementById('restaurant-badges').innerHTML = badges.join('');
-                    
-                    document.getElementById('restaurant-description').textContent = restaurant.vicinity || 'No address available';
-                    
-                    const restaurantImage = document.getElementById('restaurant-image');
-                    if (restaurant.photos && restaurant.photos[0]) {
-                        try {
-                            restaurantImage.src = restaurant.photos[0].getUrl({
-                                maxWidth: 800,
-                                maxHeight: 600
-                            });
-                        } catch (error) {
-                            restaurantImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
-                        }
-                    } else {
-                        restaurantImage.src = 'https://via.placeholder.com/800x600?text=No+Image+Available';
-                    }
-                    
-                    infoBtn.onclick = () => window.open(`https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`, '_blank');
+                  window.open(`https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`, '_blank');
                 }
-            });
-        } catch (error) {
-            console.error('Error in showNextRestaurant:', error);
-            currentIndex++;
-            if (currentIndex < currentRestaurants.length) {
-                showNextRestaurant();
+              };
             } else {
-                alert('No more restaurants to show!');
-            }
-        }
-    }
+              console.error('Failed to get place details:', status);
 
-    async function handleVote(liked) {
+              // Use basic restaurant info from search results
+              document.getElementById('restaurant-name').textContent = restaurant.name;
+
+              const badges = [];
+              if (restaurant.price_level) {
+                badges.push(`<span class="badge bg-success me-1">${'$'.repeat(restaurant.price_level)}</span>`);
+              }
+              if (restaurant.rating) {
+                badges.push(`<span class="badge bg-secondary me-1">${restaurant.rating} ★</span>`);
+              }
+              document.getElementById('restaurant-badges').innerHTML = badges.join('');
+
+              document.getElementById('restaurant-description').textContent = restaurant.vicinity || 'No address available';
+
+              const restaurantImage = document.getElementById('restaurant-image');
+              if (restaurant.photos && restaurant.photos[0]) {
+                try {
+                  restaurantImage.src = restaurant.photos[0].getUrl({
+                    maxWidth: 800,
+                    maxHeight: 600
+                  });
+                } catch (error) {
+                  restaurantImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
+                }
+              } else {
+                restaurantImage.src = 'https://via.placeholder.com/800x600?text=No+Image+Available';
+              }
+
+              infoBtn.onclick = () => window.open(`https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`, '_blank');
+            }
+          });
+        } catch (error) {
+          console.error('Error in showNextRestaurant:', error);
+          currentIndex++;
+          if (currentIndex < currentRestaurants.length) {
+            showNextRestaurant();
+          } else {
+            alert('No more restaurants to show!');
+          }
+        }
+      }
+
+      async function handleVote(liked) {
         try {
-            if (!currentRestaurants || !currentRestaurants[currentIndex]) {
-                console.error('No current restaurant to vote on');
-                alert('Error: No restaurant to vote on');
-                return;
-            }
-            
-            const restaurant = currentRestaurants[currentIndex];
-            console.log('Voting for restaurant:', restaurant);
-            
-            try {
-                const response = await fetch('/restaurants/vote', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        groupId: currentGroupId,
-                        place_id: restaurant.place_id,
-                        restaurant_name: restaurant.name,
-                        liked: liked
-                    })
-                });
+          if (!currentRestaurants || !currentRestaurants[currentIndex]) {
+            console.error('No current restaurant to vote on');
+            alert('Error: No restaurant to vote on');
+            return;
+          }
 
-                const data = await response.json();
-                if (data.success && data.isMatch) {
-                    // Show match modal
-                    document.getElementById('match-restaurant-name').textContent = data.restaurant.restaurant_name;
-                    const matchImage = document.getElementById('match-restaurant-image');
-                    
-                    // Try to get the restaurant photo
-                    if (restaurant.photos && restaurant.photos[0]) {
-                        try {
-                            matchImage.src = restaurant.photos[0].getUrl({
-                                maxWidth: 800,
-                                maxHeight: 600
-                            });
-                        } catch (error) {
-                            matchImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
-                        }
-                    } else {
-                        matchImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
-                    }
-                    
-                    document.getElementById('match-restaurant-link').href = 
-                        `https://www.google.com/maps/place/?q=place_id:${data.restaurant.place_id}`;
-                    matchModal.show();
+          const restaurant = currentRestaurants[currentIndex];
+          console.log('Voting for restaurant:', restaurant);
+
+          try {
+            const response = await fetch('/restaurants/vote', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                groupId: currentGroupId,
+                place_id: restaurant.place_id,
+                restaurant_name: restaurant.name,
+                liked: liked
+              })
+            });
+
+            const data = await response.json();
+            if (data.success && data.isMatch) {
+              // Show match modal
+              document.getElementById('match-restaurant-name').textContent = data.restaurant.restaurant_name;
+              const matchImage = document.getElementById('match-restaurant-image');
+
+              // Try to get the restaurant photo
+              if (restaurant.photos && restaurant.photos[0]) {
+                try {
+                  matchImage.src = restaurant.photos[0].getUrl({
+                    maxWidth: 800,
+                    maxHeight: 600
+                  });
+                } catch (error) {
+                  matchImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
                 }
-            } catch (error) {
-                console.error('Error in vote fetch:', error);
-            }
+              } else {
+                matchImage.src = 'https://via.placeholder.com/800x600?text=Restaurant+Image';
+              }
 
-            // Show next restaurant
-            currentIndex++;
-            if (currentIndex < currentRestaurants.length) {
-                showNextRestaurant();
-            } else {
-                alert('No more restaurants to show!');
+              document.getElementById('match-restaurant-link').href =
+                `https://www.google.com/maps/place/?q=place_id:${data.restaurant.place_id}`;
+
             }
+          } catch (error) {
+            console.error('Error in vote fetch:', error);
+          }
+
+          // Show next restaurant
+          currentIndex++;
+          if (currentIndex < currentRestaurants.length) {
+            showNextRestaurant();
+          } else {
+            alert('No more restaurants to show!');
+          }
         } catch (error) {
-            console.error('Error in handleVote:', error);
-            alert('Failed to record vote');
+          console.error('Error in handleVote:', error);
+          alert('Failed to record vote');
         }
-    }
+      }
 
-    likeBtn.addEventListener('click', function () {
+      likeBtn.addEventListener('click', function () {
         restaurantCard.classList.add('swipe-right');
         setTimeout(() => {
-            restaurantCard.classList.remove('swipe-right');
-            handleVote(true);
+          restaurantCard.classList.remove('swipe-right');
+          handleVote(true);
         }, 500);
-    });
+      });
 
-    dislikeBtn.addEventListener('click', function () {
+      dislikeBtn.addEventListener('click', function () {
         restaurantCard.classList.add('swipe-left');
         setTimeout(() => {
-            restaurantCard.classList.remove('swipe-left');
-            handleVote(false);
+          restaurantCard.classList.remove('swipe-left');
+          handleVote(false);
         }, 500);
-    });
+      });
 
-    // Add keyboard controls
-    document.addEventListener('keydown', function(e) {
+      // Add keyboard controls
+      document.addEventListener('keydown', function (e) {
         if (!likeBtn.disabled) {
-            if (e.key === 'ArrowRight') {
-                likeBtn.click();
-            } else if (e.key === 'ArrowLeft') {
-                dislikeBtn.click();
-            }
+          if (e.key === 'ArrowRight') {
+            likeBtn.click();
+          } else if (e.key === 'ArrowLeft') {
+            dislikeBtn.click();
+          }
         }
+      });
+    }
+
+    // If the API has already loaded, initialize the map
+    window.initMap = initMap;
+
+    let restoring = false;
+
+    async function restoreSwipingSession() {
+      const redirected = sessionStorage.getItem('redirectedFromInvite');
+      const payloadRaw = sessionStorage.getItem('invitePayload');
+
+      if (redirected !== 'accepted' || !payloadRaw) return;
+
+      sessionStorage.removeItem('redirectedFromInvite');
+      sessionStorage.removeItem('invitePayload');
+
+      try {
+        const { groupId, lat, lng, types } = JSON.parse(payloadRaw);
+
+        const statusRes = await fetch(`/session/status?groupId=${groupId}`);
+        const status = await statusRes.json();
+        if (status.cancelled) return;
+
+        console.log('🔁 Restoring swipe session:', groupId);
+        socket.emit('join-session', { groupId, userId: USER_ID });
+
+        socket.emit('accept-session-invite', { groupId, userId: USER_ID });
+        socket.emit('ready-to-swipe', { groupId, userId: USER_ID, lat, lng, types });
+        showWaitingOverlay();
+        currentGroupId = groupId;
+        initMap();
+        document.getElementById('inviteModal')?.classList.add('d-none');
+      } catch (err) {
+        console.error('❌ Failed to restore session:', err);
+      }
+    }
+
+
+
+    socket.on('connect', () => {
+      socket.emit('register-user', { userId: USER_ID });
+      socket.emit('ready-for-invites', { userId: USER_ID });
+      restoreSwipingSession();
     });
-}
-
-// If the API has already loaded, initialize the map
-window.initMap = initMap;
- 
-let restoring = false;
-
-async function restoreSwipingSession() {
-  const redirected = sessionStorage.getItem('redirectedFromInvite');
-  const payloadRaw = sessionStorage.getItem('invitePayload');
-
-  if (redirected !== 'accepted' || !payloadRaw) return;
-
-  sessionStorage.removeItem('redirectedFromInvite');
-  sessionStorage.removeItem('invitePayload');
-
-  try {
-    const { groupId, lat, lng, types } = JSON.parse(payloadRaw);
-
-    const statusRes = await fetch(`/session/status?groupId=${groupId}`);
-    const status = await statusRes.json();
-    if (status.cancelled) return;
-
-    console.log('🔁 Restoring swipe session:', groupId);
-    socket.emit('join-session', { groupId, userId: USER_ID });
-    socket.emit('accept-session-invite', { groupId, userId: USER_ID });
-    socket.emit('ready-to-swipe', { groupId, userId: USER_ID, lat, lng, types });
-
-    currentGroupId = groupId;
-    initMap();
-
-  } catch (err) {
-    console.error('❌ Failed to restore session:', err);
-  }
-}
 
 
 
-socket.on('connect', () => {
-  socket.emit('register-user', { userId: USER_ID });
-  socket.emit('ready-for-invites', { userId: USER_ID });
-  restoreSwipingSession();
-});
+    document.addEventListener('DOMContentLoaded', function () {
+      const continueBtn = document.getElementById('continueSwipingModal');
+      const matchModalEl = document.getElementById('matchModal');
+
+      if (continueBtn && matchModalEl) {
+        continueBtn.addEventListener('click', () => {
+          const modalInstance = bootstrap.Modal.getInstance(matchModalEl) || new bootstrap.Modal(matchModalEl);
+          modalInstance.hide();
+
+          // Clean up lingering backdrops just in case
+          const backdrops = document.querySelectorAll('.modal-backdrop');
+          backdrops.forEach(backdrop => backdrop.remove());
+
+          // Optional: re-enable body scroll
+          document.body.classList.remove('modal-open');
+          document.body.style.overflow = '';
+        });
+      }
+    });
 
 
 
+  </script>
 
-</script>
-
-{{/layout}}
+  {{/layout}}

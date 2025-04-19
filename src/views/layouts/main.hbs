@@ -1,24 +1,18 @@
 {{>head}}
 {{>nav}}
 <script src="/socket.io/socket.io.js"></script>
+<style>
+  body {
+    background: url('../../uploads/food_background.jpg') no-repeat center center fixed;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+</style>
 
-<!-- Invitation Modal (triggered on any page) -->
-<div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="inviteModalLabel">Swipe Session Invite</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        A friend invited you to join a swiping session.
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary" id="joinSwipeBtn">Join Swiping</button>
-      </div>
-    </div>
-  </div>
-</div>
+
+
+{{{body}}}
 
 <script>
 const USER_ID = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
@@ -69,5 +63,23 @@ socket.on('swipe-session-cancelled', ({ groupId }) => {
 });
 </script>
 
-{{{body}}}
+
+<!-- Invitation Modal (triggered on any page) -->
+<div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="inviteModalLabel">Swipe Session Invite</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        A friend invited you to join a swiping session.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="joinSwipeBtn">Join Swiping</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {{>footer}}

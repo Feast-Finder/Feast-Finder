@@ -32,6 +32,7 @@ require('dotenv').config();
 
 // Store active swipe sessions and readiness state
 const activeSessions = new Map(); // { groupId: { users: Set, ready: Set } }
+Handlebars.registerHelper('multiply', (a, b) => a * b);
 
 Handlebars.registerHelper('charAt', function (str, index) {
   return str && str.charAt(index);
@@ -39,7 +40,9 @@ Handlebars.registerHelper('charAt', function (str, index) {
 Handlebars.registerHelper('formatDate', function (datetime, format) {
   return datetime ? moment(datetime).format(format) : '';
 });
-
+Handlebars.registerHelper('eq', function (a, b) {
+  return a === b;
+});
 // *****************************************************
 // <!-- Section 2 : Connect to DB -->
 // *****************************************************
@@ -235,7 +238,6 @@ app.get('/home', async (req, res) => {
   if (!userId) return res.redirect('/login');
 
   try {
-    // 1. Fetch active groups where user is a member or creator
     const userGroups = await db.any(`
       SELECT g.*
       FROM Groups g
@@ -244,7 +246,6 @@ app.get('/home', async (req, res) => {
          OR gm.user_id = $1
     `, [userId]);
 
-    // 2. Fetch friends with their user info
     const userFriends = await db.any(`
       SELECT u.*
       FROM users u
@@ -255,12 +256,51 @@ app.get('/home', async (req, res) => {
       )
     `, [userId]);
 
-    res.render('Pages/Home', { groups: userGroups, friends: userFriends });
+    const groupMatches = await db.any(`
+      SELECT 
+        m.group_id,
+        COALESCE(g.name, 'Matching Session') AS group_name,
+        r.name AS restaurant_name
+      FROM Matches m
+      JOIN Groups g ON m.group_id = g.group_id
+      JOIN GroupMembers gm ON g.group_id = gm.group_id
+      JOIN Restaurants r ON m.restaurant_id = r.restaurant_id
+      WHERE gm.user_id = $1
+      ORDER BY m.matched_at DESC
+      LIMIT 10;
+    `, [userId]);
+
+    for (const match of groupMatches) {
+      const members = await db.any(`
+        SELECT u.username
+        FROM GroupMembers gm
+        JOIN Users u ON gm.user_id = u.user_id
+        WHERE gm.group_id = $1
+      `, [match.group_id]);
+
+      match.members = members.map(m => m.username);
+    }
+    const topFriends = await db.any(`
+      SELECT matched_with, COUNT(*) as count
+      FROM UserMatchHistory
+      WHERE user_id = $1 AND matched_with != 'Solo'
+      GROUP BY matched_with
+      ORDER BY count DESC
+      LIMIT 5
+    `, [userId]);
+    res.render('Pages/Home', {
+      groups: userGroups,
+      friends: userFriends,
+      recentMatches: groupMatches,
+      hasMatches: groupMatches.length > 0,
+      topFriends // ✅ pass it in
+    });
   } catch (err) {
     console.error('Error loading home page:', err);
     res.status(500).send('Internal Server Error');
   }
 });
+
 
 
 app.get('/profile', async (req, res) => {
@@ -654,6 +694,22 @@ app.get('/profile/match-stats', async (req, res) => {
   }
 });
 
+app.post('/users/lookup-ids', async (req, res) => {
+  const { usernames } = req.body;
+  if (!Array.isArray(usernames)) return res.status(400).json({ error: 'Invalid usernames array' });
+
+  try {
+    const rows = await db.any(
+      'SELECT user_id FROM users WHERE username IN ($1:csv)',
+      [usernames]
+    );
+    const userIds = rows.map(row => row.user_id);
+    res.json({ userIds });
+  } catch (err) {
+    console.error('Failed to look up user IDs:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 app.post('/profile/update', async (req, res) => {
   const { email, phone, currentPassword, newPassword, confirmNewPassword } = req.body;
@@ -779,37 +835,7 @@ app.get('/logout', async (req, res) => {
   }
 });
 
-// Create new group
-app.post('/groups', async (req, res) => {
-  try {
-    const groupId = Date.now(); // Use timestamp as group ID
-    const newGroup = {
-      group_id: groupId,
-      name: req.body.name || 'Solo Session',
-      created_by: req.session.user.user_id,
-      location: req.body.location || 'No Location', // Location not needed for minigames
-      created_at: new Date(),
-      active: true,
-      members: [req.session.user.user_id]
-    };
 
-    // Add friends to the group if provided
-    if (req.body.friends && Array.isArray(req.body.friends)) {
-      for (const friendId of req.body.friends) {
-        const userFriends = friends.get(req.session.user.user_id) || [];
-        if (userFriends.includes(parseInt(friendId))) {
-          newGroup.members.push(parseInt(friendId));
-        }
-      }
-    }
-
-    groups.set(groupId, newGroup);
-    res.json({ success: true, group_id: groupId });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: 'Failed to create group' });
-  }
-});
 
 app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
@@ -833,6 +859,16 @@ app.get('/session/status', async (req, res) => {
   }
 });
 
+app.get('/groups/:groupId', async (req, res) => {
+  const { groupId } = req.params;
+  try {
+    const group = await db.one('SELECT * FROM groups WHERE group_id = $1', [groupId]);
+    res.json({ success: true, group });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 // *****************************************************
 // <!-- Section 6 : Socket.IO Real-Time Sync Logic -->
 // *****************************************************
@@ -853,7 +889,12 @@ io.on('connection', (socket) => {
     socket.join(`user-${userId}`);
 
     try {
-      const user = await db.one('SELECT username FROM users WHERE user_id = $1', [userId]);
+      const user = await db.oneOrNone('SELECT username FROM users WHERE user_id = $1', [userId]);
+      if (user) {
+        await pubClient.hset('usernamesToIds', user.username, userId);
+      } else {
+        console.warn(`No user found with user_id = ${userId}`);
+      }
       await pubClient.hset('usernamesToIds', user.username, userId);
     } catch (err) {
       console.error('Failed to cache username in Redis:', err);
@@ -966,20 +1007,60 @@ io.on('connection', (socket) => {
   
 
   socket.on('ready-to-swipe', async ({ groupId, userId, lat, lng, types }) => {
-    if (!activeSessions.has(groupId)) {
-      activeSessions.set(groupId, { users: new Set(), ready: new Set(), types });
-    }
-    const session = activeSessions.get(groupId);
-    session.users.add(userId);
-    session.ready.add(userId);
-
-    if (session.users.size === session.ready.size) {
-      io.to(`group-${groupId}`).emit('start-swiping', { lat, lng, types });
-      await pubClient.del(`${groupId}:accepted`);
-      await pubClient.hdel(pendingNotifiesKey, groupId);
+    const readyKey = `groupReady:${groupId}`;
+    const expectedKey = `sessionUsers:${groupId}`;
+  
+    try {
+      // ✅ Add user to Redis set of ready users
+      await pubClient.sadd(readyKey, userId.toString());
+  
+      // ⏳ Small delay to ensure Redis writes propagate
+      await new Promise(resolve => setTimeout(resolve, 300));
+  
+      // ✅ Fetch expected and ready users from Redis
+      const expectedUserIds = await pubClient.smembers(expectedKey);
+      const readyUserIds = await pubClient.smembers(readyKey);
+  
+      const allReady = expectedUserIds.every(id => readyUserIds.includes(id));
+  
+      console.log('🧠 Group', groupId, 'expected users:', expectedUserIds);
+      console.log(`✅ Ready set for ${groupId}:`, readyUserIds);
+      console.log(`🧪 allReady:`, allReady);
+  
+      if (allReady) {
+        io.to(`group-${groupId}`).emit('start-swiping', { lat, lng, types });
+  
+        // 🧹 Clean up Redis keys
+        await pubClient.del(`${groupId}:accepted`);
+        await pubClient.del(expectedKey);
+        await pubClient.del(readyKey);
+        await pubClient.hdel(pendingNotifiesKey, groupId);
+      }
+    } catch (err) {
+      console.error('❌ Error in ready-to-swipe handler:', err);
     }
   });
-
+  
+  
+  
+  socket.on('register-session-users', async ({ groupId, userIds }) => {
+    try {
+      if (!groupId || !Array.isArray(userIds)) return;
+  
+      // Store all user IDs in Redis set
+      await pubClient.del(`sessionUsers:${groupId}`); // clear old
+      await pubClient.sadd(`sessionUsers:${groupId}`, ...userIds.map(id => id.toString()));
+      
+      const fullSet = await pubClient.smembers(`sessionUsers:${groupId}`);
+console.log(`🔍 After insert, sessionUsers for ${groupId}:`, fullSet);
+  
+      console.log(`🔒 Registered session users for group ${groupId}:`, userIds);
+    } catch (err) {
+      console.error('❌ Error in register-session-users:', err);
+    }
+  });
+  
+  
   socket.on('cancel-swipe-session', async ({ groupId, userId }) => {
     await pubClient.sadd('cancelledGroups', groupId);
     io.to(socket.id).emit('cancel-ack', { groupId });
@@ -1029,7 +1110,10 @@ io.on('connection', (socket) => {
       await pubClient.setex(`restaurants:${groupId}`, 3600, JSON.stringify(restaurants));
       
       // Broadcast the list to all users in the group
-      io.to(`group-${groupId}`).emit('restaurant-list', restaurants);
+      setTimeout(() => {
+        io.to(`group-${groupId}`).emit('restaurant-list', restaurants);
+      }, 300); // 300ms delay
+      
     } catch (err) {
       console.error('Error in share-restaurant-list:', err);
     }
@@ -1148,6 +1232,50 @@ app.post('/restaurants/vote', async (req, res) => {
             });
           }
         }
+// Insert into Matches table
+await db.none(`
+  INSERT INTO Matches (group_id, restaurant_id)
+  VALUES ($1, $2)
+  ON CONFLICT DO NOTHING
+`, [groupId, restaurant_id]);
+
+// Fetch group name (optional)
+const groupInfo = await db.oneOrNone('SELECT name FROM Groups WHERE group_id = $1', [groupId]);
+const groupName = groupInfo?.name || null;
+
+// Get group members and usernames
+const groupMembers = await db.any(`
+  SELECT u.user_id, u.username
+  FROM GroupMembers gm
+  JOIN Users u ON gm.user_id = u.user_id
+  WHERE gm.group_id = $1
+`, [groupId]);
+
+// Insert into UserMatchHistory for each member
+for (const user of groupMembers) {
+  // Create matched_with string (exclude current user)
+  const matchedWith = groupMembers
+    .filter(m => m.user_id !== user.user_id)
+    .map(m => m.username)
+    .join(', ') || 'Solo';
+
+  await db.none(`
+    INSERT INTO UserMatchHistory (user_id, matched_with, group_name, restaurant_id)
+    VALUES ($1, $2, $3, $4)
+  `, [user.user_id, matchedWith, groupName, restaurant_id]);
+
+  // Optional: keep only last 5 history entries
+  await db.none(`
+    DELETE FROM UserMatchHistory
+    WHERE user_id = $1
+    AND history_id NOT IN (
+      SELECT history_id FROM UserMatchHistory
+      WHERE user_id = $1
+      ORDER BY matched_at DESC
+      LIMIT 5
+    )
+  `, [user.user_id]);
+}
 
 
         return res.json({ success: true, isMatch: true, restaurant: { place_id, restaurant_name, photoUrl } });
