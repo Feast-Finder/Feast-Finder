@@ -924,32 +924,65 @@ io.on('connection', (socket) => {
   });
 
   socket.on('invite-user-by-username', async ({ username, groupId, lat, lng, types }) => {
+    console.log(`Inviting user ${username} to group ${groupId}`);
+    
     const target = await pubClient.hget('usernamesToIds', username);
-    if (!target) return;
+    if (!target) {
+      console.error(`User ${username} not found in Redis cache`);
+      return;
+    }
+    
+    console.log(`Found user ID ${target} for username ${username}`);
+    
+    // Store the invite in Redis
     await pubClient.set(`activeGroup:${currentUserId}`, groupId);
     await pubClient.hset(`invitePending:${target}`, groupId, JSON.stringify({ groupId, lat, lng, types }));
     await pubClient.hset(pendingNotifiesKey, groupId, currentUserId);
     await pubClient.hset('groupInvitees', groupId, target);
 
-    for (let i = 0; i < 20; i++) {
-      const sockets = await io.in(`user-${target}`).fetchSockets();
-      if (sockets.length > 0) {
-        console.log(`✅ Found socket for user-${target}, sending invite`);
-        io.to(`user-${target}`).emit('invite-user-to-session', {
-          groupId, // ✅ lowercase
-          lat,
-          lng,
-          types,
-          senderId: currentUserId // optional
-        });
-
-        return;
-      }
-      await new Promise(res => setTimeout(res, 250));
+    // Try to find the user's socket and send the invite
+    let inviteSent = false;
+    
+    // First check if the user is already connected
+    const sockets = await io.in(`user-${target}`).fetchSockets();
+    if (sockets.length > 0) {
+      console.log(`✅ Found socket for user-${target}, sending invite immediately`);
+      io.to(`user-${target}`).emit('invite-user-to-session', {
+        groupId,
+        lat,
+        lng,
+        types,
+        senderId: currentUserId
+      });
+      inviteSent = true;
+    } else {
+      console.log(`User ${target} not currently connected, will retry`);
     }
-
-    await pubClient.set(`activeGroup:${currentUserId}`, groupId);
-
+    
+    // If the user wasn't connected, set up a retry mechanism
+    if (!inviteSent) {
+      // Set up a retry mechanism that will try for 20 seconds
+      const retryInterval = setInterval(async () => {
+        const sockets = await io.in(`user-${target}`).fetchSockets();
+        if (sockets.length > 0) {
+          console.log(`✅ Found socket for user-${target} on retry, sending invite`);
+          io.to(`user-${target}`).emit('invite-user-to-session', {
+            groupId,
+            lat,
+            lng,
+            types,
+            senderId: currentUserId
+          });
+          clearInterval(retryInterval);
+        }
+      }, 1000);
+      
+      // Clear the interval after 20 seconds
+      setTimeout(() => {
+        clearInterval(retryInterval);
+        console.log(`Stopped trying to send invite to user ${target} after 20 seconds`);
+      }, 20000);
+    }
   });
 
   socket.on('join-session', async (payload) => {
