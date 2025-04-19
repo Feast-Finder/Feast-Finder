@@ -2,7 +2,6 @@
 {{>nav}}
 <script src="/socket.io/socket.io.js"></script>
 
-{{{body}}}
 
 <!-- Invitation Modal (triggered on any page) -->
 <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
@@ -23,19 +22,14 @@
 </div>
 
 <script>
+const redirected = sessionStorage.getItem('redirectedFromInvite');
 const USER_ID = {{#if user}}{{user.user_id}}{{else}}null{{/if}};
 let socket = io();
 
-socket.on('connect', () => {
-  if (USER_ID) {
-    socket.emit('register-user', { userId: USER_ID });
-    socket.emit('ready-for-invites', { userId: USER_ID });
-  }
-});
 
 // Show invite modal when an invite is received
 socket.on('invite-user-to-session', ({ groupId, lat, lng, types }) => {
-  const redirected = sessionStorage.getItem('redirectedFromInvite');
+  // let redirected = sessionStorage.getItem('redirectedFromInvite');
   if (redirected === 'accepted') return;
 
   sessionStorage.setItem('invitePayload', JSON.stringify({ groupId, lat, lng, types }));
@@ -50,6 +44,7 @@ socket.on('invite-user-to-session', ({ groupId, lat, lng, types }) => {
 
   joinBtn.onclick = () => {
     sessionStorage.setItem('redirectedFromInvite', 'accepted');
+    console.log(sessionStorage.getItem('redirectedFromInvite'));
     modal.hide();
     document.body.classList.remove('modal-open');
     document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
@@ -72,6 +67,18 @@ socket.on('swipe-session-cancelled', ({ groupId }) => {
 </script>
 
 
+{{{body}}}
 
+<script>
+socket.on('connect', () => {
+  if (USER_ID) {
+    socket.emit('register-user', { userId: USER_ID });
+    socket.emit('ready-for-invites', { userId: USER_ID });
+  }
+  if (window.location.pathname === '/home') {
+    restoreSwipingSession();
+  }
+});
+</script>
 
 {{>footer}}

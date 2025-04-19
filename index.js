@@ -848,6 +848,8 @@ io.on('connection', (socket) => {
   let currentUserId = null;
 
   socket.on('register-user', async ({ userId }) => {
+    console.log(`${userId} connected`);
+
     currentUserId = userId;
     await pubClient.hset(connectedUsersKey, userId, socket.id);
     socket.join(`user-${userId}`);
@@ -882,33 +884,46 @@ io.on('connection', (socket) => {
     readyForInvite.add(userId);
   });
 
-  socket.on('invite-user-by-username', async ({ username, groupId, lat, lng, types }) => {
-    const target = await pubClient.hget('usernamesToIds', username);
-    if (!target) return;
+  socket.on('invite-users-by-username', async ({ usernames, groupId, lat, lng, types }) => {
+    // const target = await pubClient.hget('usernamesToIds', username);
+    const targets = await Promise.all(usernames.map(async username => await pubClient.hget('usernamesToIds', username)));
+    if (!targets) return;
+    console.log(usernames);
+    console.log(targets);
+
     await pubClient.set(`activeGroup:${currentUserId}`, groupId);
-    await pubClient.hset(`invitePending:${target}`, groupId, JSON.stringify({ groupId, lat, lng, types }));
     await pubClient.hset(pendingNotifiesKey, groupId, currentUserId);
-    await pubClient.hset('groupInvitees', groupId, target);
+    await pubClient.hset('groupInvitees', groupId, JSON.stringify(targets));
 
-    for (let i = 0; i < 20; i++) {
-      const sockets = await io.in(`user-${target}`).fetchSockets();
-      if (sockets.length > 0) {
-        console.log(`✅ Found socket for user-${target}, sending invite`);
-        io.to(`user-${target}`).emit('invite-user-to-session', {
-          groupId, // ✅ lowercase
-          lat,
-          lng,
-          types,
-          senderId: currentUserId // optional
-        });
+    console.log(targets);
+    for (const target of targets) {
+      await pubClient.hset(
+        `invitePending:${target}`,
+        groupId,
+        JSON.stringify({ groupId, lat, lng, types })
+      );
 
-        return;
+      console.log(`inviting ${target}`);
+
+      for (let i = 0; i < 20; i++) {
+        const sockets = await io.in(`user-${target}`).fetchSockets();
+        if (sockets.length > 0) {
+          console.log(`✅ Found socket for user-${target}, sending invite`);
+          io.to(`user-${target}`).emit('invite-user-to-session', {
+            groupId, // ✅ lowercase
+            lat,
+            lng,
+            types,
+            senderId: currentUserId // optional
+          });
+
+          break;
+        }
+        await new Promise(res => setTimeout(res, 250));
       }
-      await new Promise(res => setTimeout(res, 250));
     }
 
     await pubClient.set(`activeGroup:${currentUserId}`, groupId);
-
   });
 
   socket.on('join-session', async (payload) => {
@@ -973,7 +988,13 @@ io.on('connection', (socket) => {
     session.users.add(userId);
     session.ready.add(userId);
 
-    if (session.users.size === session.ready.size) {
+    const invitees = JSON.parse(await pubClient.hget('groupInvitees', groupId));
+    console.log(invitees);
+    console.log(typeof invitees);
+    console.log(invitees.length);
+    console.log(session.ready);
+
+    if (session.ready.size === invitees.length) {
       io.to(`group-${groupId}`).emit('start-swiping', { lat, lng, types });
       await pubClient.del(`${groupId}:accepted`);
       await pubClient.hdel(pendingNotifiesKey, groupId);
@@ -1059,9 +1080,9 @@ app.post('/restaurants/vote', async (req, res) => {
     // Step 2: Save or update the swipe
     await db.none(`
       INSERT INTO swipes (group_id, user_id, restaurant_id, swipe_direction)
-      VALUES ($1, $2, $3, 'right')
-      ON CONFLICT (group_id, user_id, restaurant_id) DO UPDATE SET swipe_direction = 'right'
-    `, [groupId, user_id, restaurant_id]);
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (group_id, user_id, restaurant_id) DO UPDATE SET swipe_direction = $4
+    `, [groupId, user_id, restaurant_id, liked ? 'right' : 'left']);
 
     // Step 3: Only check for match if user liked it
     if (liked) {
@@ -1145,12 +1166,6 @@ app.get('/session/group-for-sender', async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
-
-
-
-
-
-
 
 
 // *****************************************************
