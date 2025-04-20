@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const delay = Math.random() * (7000 - 2000) + 2000;
     let reactionTime;
 
-    quickdrawButton.addEventListener('mousedown', () => {
+    quickdrawButton.addEventListener('click', (event) => {
       if (!gameStarted) {
         gameStarted = true;
 
