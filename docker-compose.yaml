@@ -26,7 +26,7 @@ services:
       - '80:3000'
     volumes:
       - .:/repository
-    command: 'npm start'
+    command: npm start
 
 volumes:
   feast-finder:
