@@ -1,5 +1,5 @@
 module.exports = {
-  spec: 'test/**/*.test.js',
-  timeout: 5000,
-  reporter: 'spec'
+  require: ['chai/register-expect'],
+  recursive: true,
+  extension: ['test.js']
 };

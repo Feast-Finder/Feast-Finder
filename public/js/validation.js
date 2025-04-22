@@ -137,3 +137,12 @@ function setValid(input) {
   input.classList.add('is-valid');
   input.classList.remove('is-invalid');
 }
+if (typeof module !== 'undefined') {
+  module.exports = {
+    validateUsername,
+    validateEmail,
+    validatePhone,
+    setInvalid,
+    setValid
+  };
+}
