@@ -1,103 +1,73 @@
-<div class="modal fade" id="selectMinigameModal" tabindex="-1" aria-labelledby="selectMinigameModalLabel" aria-hidden="true">
-<div class="modal-dialog">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h5 class="modal-title" id="selectMinigameModalLabel">Select Minigame</h5>
-      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-    </div>
-    <div class="modal-body">
-      <form id="minigameForm">
-        <div class="mb-3">
-          <label for="groupName" class="form-label">Group Name (optional)</label>
-          <input type="text" class="form-control" id="groupName" placeholder="Enter a name for your group">
-          </div>
+<div class="modal fade" id="startGameModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="startGameModalLabel">Select a Minigame</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
 
+        <form id="gameForm">
           <div class="mb-3">
-            <label class="form-label">Friends (optional)</label>
-            <div id="friendSelection">
-              {{#if friends}}
-                <div class="mb-2">
-                  <select id="minigameFriendSelect" class="form-select mb-2">
-                    <option value="">Select a friend to add</option>
-                    {{#each friends}}
-                      <option value="{{this.user_id}}">{{this.username}}</option>
-                    {{/each}}
-                  </select>
-                  <button type="button" id="minigameAddFriendBtn" class="btn btn-sm btn-outline-primary">Add Friend</button>
-                </div>
-                <div id="minigameSelectedFriends" class="d-flex flex-wrap gap-2 my-2"></div>
-              {{else}}
-                <p class="text-muted fst-italic">No friends available. <a href="/friends">Add friends</a> to invite them.</p>
-              {{/if}}
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Select Minigame</label>
-            <select class="form-select" id="minigameSelect" aria-label="Select Minigame">
-              <option selected>Choose a Minigame</option>
-              <option value="minigame1">Minigame 1</option>
-              <option value="minigame2">Minigame 2</option>
-              <option value="minigame3">Minigame 3</option>
+            <label for="gameSelection" class="form-label">Minigames</label>
+            <select id="gameSelection" class="form-select" required>
+              <option value="">Select a Minigame</option>
+              <option value="quickdraw">Quickdraw</option>
             </select>
           </div>
-
         </form>
+
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="selectMinigameBtn" data-bs-dismiss="modal">Start Game</button>
+        <button type="button" class="btn btn-primary" id="startGameBtn">Play Now</button>
       </div>
     </div>
   </div>
 </div>
 
-<div class="modal fade" id="minigameModal1" tabindex="-1" aria-labelledby="minigame1ModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+<div id="gameWaitingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-75 text-white fw-bold fs-4 d-none" style="z-index: 1050;">
+  Waiting on your friends to accept the game invite...
+</div>
+
+<div class="modal fade" id="gameInviteModal" tabindex="-1" aria-labelledby="gameInviteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="minigame1ModalLabel">Minigame 1</h5>
+        <h5 class="modal-title" id="gameInviteModalLabel">Game Invite</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="joinGameBtn" data-bs-dismiss="modal">Join Game</button>
       </div>
     </div>
   </div>
 </div>
 
-<div class="modal fade" id="minigameModal2" tabindex="-1" aria-labelledby="minigame2ModalLabel" aria-hidden="true">
+<div class="modal fade" id="quickdrawModal" tabindex="-1" aria-labelledby="quickdrawModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="minigame2ModalLabel">Minigame 2</h5>
+        <h5 class="modal-title" id="quickdrawModalLabel">Quickdraw</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
+        <div class="d-grid text-center">
+          <p id="quickdrawText">Don't be last to click the button.</p>
+          <button id="quickdrawButton" class="btn btn-primary">Start</button>
+        </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="quickdrawDoneBtn">Done</button>
       </div>
     </div>
   </div>
 </div>
 
-<div class="modal fade" id="minigameModal3" tabindex="-1" aria-labelledby="minigame3ModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="minigame3ModalLabel">Minigame 3</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script src="/js/minigames.js"></script>
+<script text="text/javascript">
+sessionStorage.setItem('userId', {{user.user_id}});
+</script>
+<script text="text/javascript" src="/js/minigames.js"></script>

@@ -1,9 +1,6 @@
 {{#> layout name="main" }}
 <style>
-  body {
-    background: url('../../uploads/food_background.png') no-repeat center center fixed;
-    background-size: cover;
-  }
+
 
   .timeline li::before {
     content: "";
@@ -220,7 +217,7 @@
               </form>
             </div>
 
-            <!-- Account Settings Tab -->
+
             <!-- Account Settings Tab -->
             <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
               <form id="accountForm">
@@ -269,16 +266,12 @@
                     Delete My Account
                   </button>
                 </div>
+
+
+              </form>
             </div>
 
-            </form>
 
-
-
-
-
-            <!-- History Tab -->
-            <!-- History Tab -->
 
             <!-- History Tab -->
             <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
@@ -286,7 +279,7 @@
               <ul class="list-group mb-4">
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                   Total Matches
-                  <span class="fw-bold">{{matchStats.total_matches}}</span>
+                  <span class="fw-bold">{{matchStats.total}}</span>
                 </li>
               </ul>
 
@@ -321,14 +314,14 @@
 
 
               <h5 class="mb-3">Match Timeline</h5>
-              {{#if timeline.length}}
+              {{#if timelineData.length}}
               <div class="timeline list-group mb-3 fade show">
-                {{#each timeline}}
+                {{#each timelineData}}
                 <div
                   class="list-group-item list-group-item-action mb-2 border-start border-4 border-primary rounded shadow-sm fade show"
                   style="animation: fadeIn 0.5s ease-in;">
                   <div class="d-flex w-100 justify-content-between">
-                    <h6 class="mb-1">Matched with "{{this.restaurant_name}}"</h6>
+                    <h6 class="mb-1">Matched with "{{this.name}}"</h6>
                     <small class="text-muted">{{this.matched_at}}</small>
                   </div>
                   <p class="mb-1 text-muted">With: {{this.matched_with}}</p>
@@ -349,214 +342,233 @@
               .fade.show {
                 opacity: 1;
               }
+              
+  .modal-backdrop.show {
+    opacity: 0.5 !important;
+  }
+
+
             </style>
 
 
 
+          </div> 
+        </div> 
+      </div> 
+    </div>
+  </div>
+
+
+  <script>
+    document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => {
+      const confirmed = confirm("Are you sure you want to permanently delete your account? This action cannot be undone.");
+
+      if (!confirmed) return;
+
+      try {
+        const res = await fetch('/profile/delete', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (res.ok) {
+          alert("Your account has been deleted.");
+          window.location.href = '/'; // Redirect to homepage or goodbye page
+        } else {
+          const result = await res.json();
+          alert(result.error || "Failed to delete account.");
+        }
+      } catch (err) {
+        console.error("Error deleting account:", err);
+        alert("Server error. Please try again later.");
+      }
+    });
+
+    async function loadMatchStats() {
+      try {
+        const res = await fetch('/profile/match-stats');
+        const data = await res.json();
+
+        document.getElementById('totalMatches').textContent = data.total_matches;
+        document.getElementById('soloMatches').textContent = data.solo_matches;
+        document.getElementById('groupMatches').textContent = data.group_matches;
+        document.getElementById('lastMatched').textContent = data.last_matched
+          ? new Date(data.last_matched).toLocaleDateString()
+          : 'Never';
+      } catch (err) {
+        console.error('Error loading match stats:', err);
+      }
+    }
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const res = await fetch('/profile/stats');
+        const result = await res.json();
+
+        // Set total match count
+        const matchTotal = document.getElementById('matchTotal');
+        if (matchTotal) matchTotal.textContent = result.totalMatches || '0';
+
+        // Set top 3 friends
+        const topList = ['topFriend1', 'topFriend2', 'topFriend3'];
+        topList.forEach((id, index) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = result.topFriends?.[index] || '-';
+        });
+
+      } catch (err) {
+        console.error('Error loading match stats:', err);
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', loadMatchStats);
+
+    document.getElementById('profileUpload').addEventListener('change', async function () {
+      const file = this.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('profile_picture', file); // NAME MUST MATCH server expectation
+
+      try {
+        const res = await fetch('/profile/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await res.json();
+
+if (res.ok && result.profile_picture_url) {
+  const profileImg = document.querySelector('.card-body img.rounded-circle');
+  if (profileImg) {
+    profileImg.src = `${result.profile_picture_url}?t=${Date.now()}`;
+  }
+
+  
+  const navbarImg = document.querySelector('.navbar .dropdown-toggle img');
+  if (navbarImg) {
+    navbarImg.src = `${result.profile_picture_url}?t=${Date.now()}`;
+  }
+}
+ else {
+          console.error(result.error || 'Upload failed');
+        }
+      } catch (err) {
+        console.error('Upload error:', err);
+      }
+    });
+
+    document.getElementById('editAccountBtn').addEventListener('click', function () {
+      const emailInput = document.getElementById('email');
+      const phoneInput = document.getElementById('phone');
+      const passwordSection = document.getElementById('passwordSection');
+      const saveBtn = document.getElementById('saveAccountBtn');
+
+      emailInput.removeAttribute('disabled');
+      phoneInput.removeAttribute('disabled');
+      passwordSection.classList.remove('d-none');
+      this.classList.add('d-none');
+      saveBtn.classList.remove('d-none');
+    });
+
+    document.getElementById('accountForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+      // Optional phone number validation (US-style)
+      const phonePattern = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
+      if (phone && !phonePattern.test(phone)) {
+        alert('Please enter a valid phone number (e.g. 123-456-7890)');
+        return;
+      }
+
+      try {
+        const res = await fetch('/profile/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            phone,
+            currentPassword,
+            newPassword,
+            confirmNewPassword
+          })
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          alert('Profile updated successfully!');
+          document.getElementById('email').setAttribute('disabled', true);
+          document.getElementById('phone').setAttribute('disabled', true);
+          document.getElementById('passwordSection').classList.add('d-none');
+          document.getElementById('saveAccountBtn').classList.add('d-none');
+          document.getElementById('editAccountBtn').classList.remove('d-none');
+          document.getElementById('accountForm').reset();
+        } else {
+          alert(result.error || 'Update failed.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Server error occurred.');
+      }
+    });
+
+    document.getElementById('editPreferencesBtn').addEventListener('click', function () {
+      const form = document.getElementById('preferencesForm');
+      const inputs = form.querySelectorAll('input, select');
+      const saveBtn = document.getElementById('savePreferencesBtn');
+
+      inputs.forEach(input => input.removeAttribute('disabled'));
+      this.classList.add('d-none');
+      saveBtn.classList.remove('d-none');
+    });
+
+    document.getElementById('preferencesForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const form = e.target;
+
+      const selectedCuisines = Array.from(form.querySelectorAll('input[name="cuisine"]:checked')).map(input => input.value);
+      const selectedDiet = Array.from(form.querySelectorAll('input[name="diet"]:checked')).map(input => input.value);
+      const priceRange = form.priceRange.value;
+
+      try {
+        const res = await fetch('/profile/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cuisines: selectedCuisines,
+            dietary: selectedDiet,
+            priceRange
+          })
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          alert('Preferences updated!');
+          const inputs = form.querySelectorAll('input, select');
+          inputs.forEach(input => input.setAttribute('disabled', true));
+          document.getElementById('savePreferencesBtn').classList.add('d-none');
+          document.getElementById('editPreferencesBtn').classList.remove('d-none');
+        } else {
+          alert(result.error || 'Update failed.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert(' Server error.');
+      }
+    });
 
 
 
-            <script>
-              document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => {
-                const confirmed = confirm("Are you sure you want to permanently delete your account? This action cannot be undone.");
-
-                if (!confirmed) return;
-
-                try {
-                  const res = await fetch('/profile/delete', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' }
-                  });
-
-                  if (res.ok) {
-                    alert("Your account has been deleted.");
-                    window.location.href = '/'; // Redirect to homepage or goodbye page
-                  } else {
-                    const result = await res.json();
-                    alert(result.error || "Failed to delete account.");
-                  }
-                } catch (err) {
-                  console.error("Error deleting account:", err);
-                  alert("Server error. Please try again later.");
-                }
-              });
-
-              async function loadMatchStats() {
-                try {
-                  const res = await fetch('/profile/match-stats');
-                  const data = await res.json();
-
-                  document.getElementById('totalMatches').textContent = data.total_matches;
-                  document.getElementById('soloMatches').textContent = data.solo_matches;
-                  document.getElementById('groupMatches').textContent = data.group_matches;
-                  document.getElementById('lastMatched').textContent = data.last_matched
-                    ? new Date(data.last_matched).toLocaleDateString()
-                    : 'Never';
-                } catch (err) {
-                  console.error('Error loading match stats:', err);
-                }
-              }
-              document.addEventListener('DOMContentLoaded', async () => {
-                try {
-                  const res = await fetch('/profile/stats');
-                  const result = await res.json();
-
-                  // Set total match count
-                  const matchTotal = document.getElementById('matchTotal');
-                  if (matchTotal) matchTotal.textContent = result.totalMatches || '0';
-
-                  // Set top 3 friends
-                  const topList = ['topFriend1', 'topFriend2', 'topFriend3'];
-                  topList.forEach((id, index) => {
-                    const el = document.getElementById(id);
-                    if (el) el.textContent = result.topFriends?.[index] || '-';
-                  });
-
-                } catch (err) {
-                  console.error('Error loading match stats:', err);
-                }
-              });
-
-              document.addEventListener('DOMContentLoaded', loadMatchStats);
-
-              document.getElementById('profileUpload').addEventListener('change', async function () {
-                const file = this.files[0];
-                if (!file) return;
-
-                const formData = new FormData();
-                formData.append('profile_picture', file); // NAME MUST MATCH server expectation
-
-                try {
-                  const res = await fetch('/profile/upload', {
-                    method: 'POST',
-                    body: formData
-                  });
-
-                  const result = await res.json();
-
-                  if (res.ok && result.profile_picture_url) {
-                    const profileImg = document.querySelector('.card-body img.rounded-circle');
-                    if (profileImg) {
-                      profileImg.src = `${result.profile_picture_url}?t=${Date.now()}`;
-                    }
-                  } else {
-                    console.error(result.error || 'Upload failed');
-                  }
-                } catch (err) {
-                  console.error('Upload error:', err);
-                }
-              });
-
-              document.getElementById('editAccountBtn').addEventListener('click', function () {
-                const emailInput = document.getElementById('email');
-                const phoneInput = document.getElementById('phone');
-                const passwordSection = document.getElementById('passwordSection');
-                const saveBtn = document.getElementById('saveAccountBtn');
-
-                emailInput.removeAttribute('disabled');
-                phoneInput.removeAttribute('disabled');
-                passwordSection.classList.remove('d-none');
-                this.classList.add('d-none');
-                saveBtn.classList.remove('d-none');
-              });
-
-              document.getElementById('accountForm').addEventListener('submit', async function (e) {
-                e.preventDefault();
-
-                const email = document.getElementById('email').value.trim();
-                const phone = document.getElementById('phone').value.trim();
-                const currentPassword = document.getElementById('currentPassword').value;
-                const newPassword = document.getElementById('newPassword').value;
-                const confirmNewPassword = document.getElementById('confirmNewPassword').value;
-
-                // Optional phone number validation (US-style)
-                const phonePattern = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
-                if (phone && !phonePattern.test(phone)) {
-                  alert('Please enter a valid phone number (e.g. 123-456-7890)');
-                  return;
-                }
-
-                try {
-                  const res = await fetch('/profile/update', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      email,
-                      phone,
-                      currentPassword,
-                      newPassword,
-                      confirmNewPassword
-                    })
-                  });
-
-                  const result = await res.json();
-
-                  if (res.ok) {
-                    alert('Profile updated successfully!');
-                    document.getElementById('email').setAttribute('disabled', true);
-                    document.getElementById('phone').setAttribute('disabled', true);
-                    document.getElementById('passwordSection').classList.add('d-none');
-                    document.getElementById('saveAccountBtn').classList.add('d-none');
-                    document.getElementById('editAccountBtn').classList.remove('d-none');
-                    document.getElementById('accountForm').reset();
-                  } else {
-                    alert(result.error || 'Update failed.');
-                  }
-                } catch (err) {
-                  console.error(err);
-                  alert('Server error occurred.');
-                }
-              });
-
-              document.getElementById('editPreferencesBtn').addEventListener('click', function () {
-                const form = document.getElementById('preferencesForm');
-                const inputs = form.querySelectorAll('input, select');
-                const saveBtn = document.getElementById('savePreferencesBtn');
-
-                inputs.forEach(input => input.removeAttribute('disabled'));
-                this.classList.add('d-none');
-                saveBtn.classList.remove('d-none');
-              });
-
-              document.getElementById('preferencesForm').addEventListener('submit', async function (e) {
-                e.preventDefault();
-
-                const form = e.target;
-
-                const selectedCuisines = Array.from(form.querySelectorAll('input[name="cuisine"]:checked')).map(input => input.value);
-                const selectedDiet = Array.from(form.querySelectorAll('input[name="diet"]:checked')).map(input => input.value);
-                const priceRange = form.priceRange.value;
-
-                try {
-                  const res = await fetch('/profile/preferences', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      cuisines: selectedCuisines,
-                      dietary: selectedDiet,
-                      priceRange
-                    })
-                  });
-
-                  const result = await res.json();
-
-                  if (res.ok) {
-                    alert('Preferences updated!');
-                    const inputs = form.querySelectorAll('input, select');
-                    inputs.forEach(input => input.setAttribute('disabled', true));
-                    document.getElementById('savePreferencesBtn').classList.add('d-none');
-                    document.getElementById('editPreferencesBtn').classList.remove('d-none');
-                  } else {
-                    alert(result.error || 'Update failed.');
-                  }
-                } catch (err) {
-                  console.error(err);
-                  alert(' Server error.');
-                }
-              });
+  </script>
+</div>
 
 
-
-            </script>
-          </div>
-          {{/layout}}
+{{/layout}}

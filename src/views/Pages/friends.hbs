@@ -1,7 +1,7 @@
 {{#> layout name="main" }}
 <style>
   body {
-    background: url('../../uploads/food_background.png') no-repeat center center fixed;
+    background: url('../../uploads/food_background.jpg') no-repeat center center fixed;
     background-size: cover;
   }
 
@@ -20,7 +20,7 @@
   }
 </style>
 <div class="container pt-4">
-  <h2 class="mb-4 text-white">Friends</h2>
+  <h2 class="mb-4 text-black">Friends</h2>
 
   {{#if error}}
   <div class="alert alert-danger">{{error}}</div>
@@ -346,36 +346,36 @@
             users.forEach(user => {
               const li = document.createElement('li');
               li.className = 'list-group-item d-flex justify-content-between align-items-center';
-              li.innerHTML = `
+ li.innerHTML = `
   <form class="d-flex justify-content-between align-items-center w-100">
     <input type="hidden" name="friend_id" value="${user.user_id}" />
     <div class="d-flex align-items-center me-auto">
       ${user.profile_picture_url
-                  ? `<img src="${user.profile_picture_url}" 
+        ? `<img src="${user.profile_picture_url}" 
                  alt="${user.username}'s avatar" 
                  class="rounded-circle me-3" 
                  style="width: 40px; height: 40px; object-fit: cover;">`
-                  : `<div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center me-3"
+        : `<div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center me-3"
                   style="width: 40px; height: 40px; font-weight: bold;">
                ${user.username[0]?.toLowerCase() || '?'}
              </div>`
-                }
+      }
       <a href="#" class="view-profile fw-bold text-dark text-decoration-none"
          data-user-id="${user.user_id}" data-username="${user.username}">
         ${user.username}
-   <span class="ms-2" title="${user.active ? 'Active' : 'Inactive'}">
-  <span class="d-inline-block rounded-circle ${user.active ? 'bg-success' : 'bg-secondary'}"
-        style="width: 10px; height: 10px;"></span>
-</span>
-
+        <span class="ms-2 align-middle" title="${user.active ? 'Active' : 'Inactive'}">
+          <span class="d-inline-block rounded-circle ${user.active ? 'bg-success' : 'bg-secondary'}"
+                style="width: 10px; height: 10px;"></span>
+        </span>
       </a>
     </div>
     ${user.is_friend
-                  ? '<button type="button" class="btn btn-sm btn-outline-secondary ms-2" disabled>Friends</button>'
-                  : '<button type="button" class="btn btn-sm btn-primary rounded-pill ms-2 add-friend-btn">Add Friend</button>'
-                }
+      ? '<button type="button" class="btn btn-sm btn-outline-secondary ms-2" disabled>Friends</button>'
+      : '<button type="button" class="btn btn-sm btn-primary rounded-pill ms-2 add-friend-btn">Add Friend</button>'
+    }
   </form>
 `;
+
 
 
               const addButton = li.querySelector('.add-friend-btn');
@@ -398,31 +398,35 @@
 
                       const newFriend = document.createElement('li');
                       newFriend.className = 'list-group-item d-flex justify-content-between align-items-center';
-                      newFriend.innerHTML = `
-  <div class="d-flex align-items-center">
-    ${user.profile_picture_url ? `
-      <img src="${user.profile_picture_url}" 
-           alt="${user.username}'s avatar" 
-           class="rounded-circle me-3" 
-           style="width: 40px; height: 40px; object-fit: cover;">
-    ` : `
-      <div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center me-3"
-           style="width: 40px; height: 40px; font-weight: bold;">
-        ${user.username[0].toLowerCase()}
-      </div>
-    `}
-    <a href="#" class="fw-bold text-dark text-decoration-none view-profile"
-       data-user-id="${user.user_id}" data-username="${user.username}">
-      ${user.username}
-      ${user.active
-                          ? '<span class="badge bg-success ms-2">Active</span>'
-                          : '<span class="badge bg-secondary ms-2">Inactive</span>'}
-    </a>
+newFriend.innerHTML = `
+  <div class="d-flex align-items-center justify-content-between w-100">
+    <div class="d-flex align-items-center">
+      ${user.profile_picture_url ? `
+        <img src="${user.profile_picture_url}" 
+             alt="${user.username}'s avatar" 
+             class="rounded-circle me-3" 
+             style="width: 40px; height: 40px; object-fit: cover;">
+      ` : `
+        <div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center me-3"
+             style="width: 40px; height: 40px; font-weight: bold;">
+          ${user.username[0].toLowerCase()}
+        </div>
+      `}
+      <a href="#" class="fw-bold text-dark text-decoration-none view-profile"
+         data-user-id="${user.user_id}" data-username="${user.username}">
+        ${user.username}
+        <span class="ms-2 align-middle" title="${user.active ? 'Active' : 'Inactive'}">
+          <span class="d-inline-block rounded-circle ${user.active ? 'bg-success' : 'bg-secondary'}"
+                style="width: 10px; height: 10px;"></span>
+        </span>
+      </a>
+    </div>
+    <button class="btn btn-sm btn-danger remove-friend" data-user-id="${user.user_id}">
+      Remove
+    </button>
   </div>
-  <button class="btn btn-sm btn-danger remove-friend" data-user-id="${user.user_id}">
-    Remove
-  </button>
 `;
+
 
 
                       friendsList.appendChild(newFriend);

@@ -24,16 +24,6 @@
         <!-- Right links (auth section) -->
         <ul class="navbar-nav ms-auto">
           {{#if user}}
-          <!-- Minigames Dropdown -->
-           <!-- Minigames Selection Modal -->
-          <li class="nav-item dropdown">
-            <ul class="navbar-nav me-auto">
-              <li class="nav-item">
-                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#selectMinigameModal">Play Minigame</a>
-              </li>
-            </ul>
-          </li>
-
           <!-- Profile Dropdown -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button"
@@ -72,5 +62,3 @@
     </div>
   </nav>
 </header>
-
-{{> minigames}}

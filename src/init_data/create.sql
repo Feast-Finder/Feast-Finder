@@ -60,6 +60,7 @@ CREATE INDEX idx_friends_user_id_2 ON Friends (user_id_2);
 CREATE TABLE IF NOT EXISTS Groups (
     group_id SERIAL PRIMARY KEY,
     creator_user_id INTEGER NOT NULL,
+    name TEXT, 
     location_latitude DECIMAL(10, 6) NOT NULL,
     location_longitude DECIMAL(10, 6) NOT NULL,
     max_distance INTEGER,
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS Groups (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (creator_user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
+
 
 
 COMMENT ON TABLE Groups IS 'Stores information about each group created for finding a restaurant.';
