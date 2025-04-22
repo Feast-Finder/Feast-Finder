@@ -249,7 +249,7 @@
         </div>
         <div class="d-grid gap-2">
           <a id="match-restaurant-link" class="btn btn-primary" target="_blank">View on Google Maps</a>
-          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#startGameModal" data-bs-dismiss="modal">Play a minigame to decide who pays</button>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#startGameModal">Play a minigame to decide who pays</button>
           <button class="btn btn-outline-secondary" id="continueSwipingModal" data-bs-dismiss="modal">Continue
             Swiping</button>
         </div>
@@ -641,7 +641,8 @@
       document.getElementById('match-restaurant-link').href = `https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`;
 
       // Show modal
-      const matchModal = new bootstrap.Modal(document.getElementById('matchModal'));
+      const matchModalEl = document.getElementById('matchModal');
+      const matchModal = bootstrap.Modal.getOrCreateInstance(matchModalEl);
       matchModal.show();
     });
 

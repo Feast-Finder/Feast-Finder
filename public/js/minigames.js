@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   document.getElementById('startGameBtn').addEventListener('click', () => {
-    const modal     = bootstrap.Modal.getInstance(document.getElementById('startGameModal'));
+    const modal     = bootstrap.Modal.getInstance(startGameModal);
     const form      = document.getElementById('gameForm');
     const selection = form.querySelector('#gameSelection');
 
