@@ -135,7 +135,7 @@ app.post('/register', async (req, res) => {
       email && email.trim() !== '' ? email.trim() : null,
       phone && phone.trim() !== '' ? phone.replace(/\D/g, '') : null
     ]);
-    
+
 
     // Insert default preferences
     await db.none(`
@@ -943,15 +943,16 @@ io.on('connection', (socket) => {
     socket.join(`user-${userId}`);
 
     try {
+      // Use oneOrNone to gracefully handle non-existent users
       const user = await db.oneOrNone('SELECT username FROM users WHERE user_id = $1', [userId]);
-      if (user) {
+      if (user) { // Check if user exists before accessing properties
         await pubClient.hset('usernamesToIds', user.username, userId);
       } else {
-        console.warn(`No user found with user_id = ${userId}`);
+        console.warn(`⚠️ User not found in DB during register-user: ${userId}`);
+        // Optionally emit an error back to the client or handle appropriately
       }
-      await pubClient.hset('usernamesToIds', user.username, userId);
     } catch (err) {
-      console.error('Failed to cache username in Redis:', err);
+      console.error('❌ Failed to cache username in Redis or DB error:', err);
     }
     const [pendingInvite, cancelled] = await Promise.all([
       pubClient.hgetall(`invitePending:${userId}`),
@@ -979,7 +980,7 @@ io.on('connection', (socket) => {
 
   socket.on('invite-user-by-username', async ({ username, groupId, lat, lng, types }) => {
     console.log(`Inviting user ${username} to group ${groupId}`);
-    
+
     const target = await pubClient.hget('usernamesToIds', username);
     if (!target) {
       console.error(`User ${username} not found in Redis cache`);
@@ -987,13 +988,13 @@ io.on('connection', (socket) => {
     }
 
     // Create session and add self to it
-    activeSessions.set(groupId, { users : new Set(), ready: new Set(), types: [] });
+    activeSessions.set(groupId, { users: new Set(), ready: new Set(), types: [] });
     const session = activeSessions.get(groupId);
     session.users.add(currentUserId);
     session.ready.add(currentUserId);
-    
+
     console.log(`Found user ID ${target} for username ${username}`);
-    
+
     // Store the invite in Redis
     await pubClient.set(`activeGroup:${currentUserId}`, groupId);
     await pubClient.hset(`invitePending:${target}`, groupId, JSON.stringify({ groupId, lat, lng, types }));
@@ -1002,7 +1003,7 @@ io.on('connection', (socket) => {
 
     // Try to find the user's socket and send the invite
     let inviteSent = false;
-    
+
     // First check if the user is already connected
     const sockets = await io.in(`user-${target}`).fetchSockets();
     if (sockets.length > 0) {
@@ -1018,7 +1019,7 @@ io.on('connection', (socket) => {
     } else {
       console.log(`User ${target} not currently connected, will retry`);
     }
-    
+
     // If the user wasn't connected, set up a retry mechanism
     if (!inviteSent) {
       // Set up a retry mechanism that will try for 20 seconds
@@ -1036,7 +1037,7 @@ io.on('connection', (socket) => {
           clearInterval(retryInterval);
         }
       }, 1000);
-      
+
       // Clear the interval after 20 seconds
       setTimeout(() => {
         clearInterval(retryInterval);
@@ -1130,7 +1131,7 @@ io.on('connection', (socket) => {
       let loser;
 
       for (const [name, score] of session.gameScores) {
-        loser   = score > highest ? name : loser;
+        loser = score > highest ? name : loser;
         highest = score > highest ? score : highest;
       }
 
@@ -1147,27 +1148,27 @@ io.on('connection', (socket) => {
   socket.on('ready-to-swipe', async ({ groupId, userId, lat, lng, types }) => {
     const readyKey = `groupReady:${groupId}`;
     const expectedKey = `sessionUsers:${groupId}`;
-  
+
     try {
       // ✅ Add user to Redis set of ready users
       await pubClient.sadd(readyKey, userId.toString());
-  
+
       // ⏳ Small delay to ensure Redis writes propagate
       await new Promise(resolve => setTimeout(resolve, 300));
-  
+
       // ✅ Fetch expected and ready users from Redis
       const expectedUserIds = await pubClient.smembers(expectedKey);
       const readyUserIds = await pubClient.smembers(readyKey);
-  
+
       const allReady = expectedUserIds.every(id => readyUserIds.includes(id));
-  
+
       console.log('🧠 Group', groupId, 'expected users:', expectedUserIds);
       console.log(`✅ Ready set for ${groupId}:`, readyUserIds);
       console.log(`🧪 allReady:`, allReady);
-  
+
       if (allReady) {
         io.to(`group-${groupId}`).emit('start-swiping', { lat, lng, types });
-  
+
         // 🧹 Clean up Redis keys
         await pubClient.del(`${groupId}:accepted`);
         await pubClient.del(expectedKey);
@@ -1178,27 +1179,27 @@ io.on('connection', (socket) => {
       console.error('❌ Error in ready-to-swipe handler:', err);
     }
   });
-  
-  
-  
+
+
+
   socket.on('register-session-users', async ({ groupId, userIds }) => {
     try {
       if (!groupId || !Array.isArray(userIds)) return;
-  
+
       // Store all user IDs in Redis set
       await pubClient.del(`sessionUsers:${groupId}`); // clear old
       await pubClient.sadd(`sessionUsers:${groupId}`, ...userIds.map(id => id.toString()));
-      
+
       const fullSet = await pubClient.smembers(`sessionUsers:${groupId}`);
-console.log(`🔍 After insert, sessionUsers for ${groupId}:`, fullSet);
-  
+      console.log(`🔍 After insert, sessionUsers for ${groupId}:`, fullSet);
+
       console.log(`🔒 Registered session users for group ${groupId}:`, userIds);
     } catch (err) {
       console.error('❌ Error in register-session-users:', err);
     }
   });
-  
-  
+
+
   socket.on('cancel-swipe-session', async ({ groupId, userId }) => {
     await pubClient.sadd('cancelledGroups', groupId);
     io.to(socket.id).emit('cancel-ack', { groupId });
@@ -1226,7 +1227,7 @@ console.log(`🔍 After insert, sessionUsers for ${groupId}:`, fullSet);
     try {
       // Check if we already have a restaurant list for this group in Redis
       const existingList = await pubClient.get(`restaurants:${groupId}`);
-      
+
       if (existingList) {
         // If we have a list, send it to the requesting user
         const socketId = await pubClient.hget(connectedUsersKey, currentUserId);
@@ -1246,12 +1247,12 @@ console.log(`🔍 After insert, sessionUsers for ${groupId}:`, fullSet);
     try {
       // Store the restaurant list in Redis with a 1-hour expiration
       await pubClient.setex(`restaurants:${groupId}`, 3600, JSON.stringify(restaurants));
-      
+
       // Broadcast the list to all users in the group
       setTimeout(() => {
         io.to(`group-${groupId}`).emit('restaurant-list', restaurants);
       }, 300); // 300ms delay
-      
+
     } catch (err) {
       console.error('Error in share-restaurant-list:', err);
     }
@@ -1370,47 +1371,47 @@ app.post('/restaurants/vote', async (req, res) => {
             });
           }
         }
-// Insert into Matches table
-await db.none(`
+        // Insert into Matches table
+        await db.none(`
   INSERT INTO Matches (group_id, restaurant_id)
   VALUES ($1, $2)
   ON CONFLICT DO NOTHING
 `, [groupId, restaurant_id]);
 
-// Fetch group name (optional)
-const groupInfo = await db.oneOrNone('SELECT name FROM Groups WHERE group_id = $1', [groupId]);
-const groupName = groupInfo?.name || null;
+        // Fetch group name (optional)
+        const groupInfo = await db.oneOrNone('SELECT name FROM Groups WHERE group_id = $1', [groupId]);
+        const groupName = groupInfo?.name || null;
 
-// Get group members and usernames
-const groupMembers = await db.any(`
+        // Get group members and usernames
+        const groupMembers = await db.any(`
   SELECT u.user_id, u.username
   FROM GroupMembers gm
   JOIN Users u ON gm.user_id = u.user_id
   WHERE gm.group_id = $1
 `, [groupId]);
 
-// Insert into UserMatchHistory for each member
-for (const user of groupMembers) {
-  const otherUsers = groupMembers.filter(m => m.user_id !== user.user_id);
+        // Insert into UserMatchHistory for each member
+        for (const user of groupMembers) {
+          const otherUsers = groupMembers.filter(m => m.user_id !== user.user_id);
 
-  if (otherUsers.length === 0) {
-    // Solo match
-    await db.none(`
+          if (otherUsers.length === 0) {
+            // Solo match
+            await db.none(`
       INSERT INTO UserMatchHistory (user_id, matched_with, group_name, restaurant_id)
       VALUES ($1, 'Solo', $2, $3)
     `, [user.user_id, groupName, restaurant_id]);
-  } else {
-    // Create one entry per pair
-    for (const other of otherUsers) {
-      await db.none(`
+          } else {
+            // Create one entry per pair
+            for (const other of otherUsers) {
+              await db.none(`
         INSERT INTO UserMatchHistory (user_id, matched_with, group_name, restaurant_id)
         VALUES ($1, $2, $3, $4)
       `, [user.user_id, other.username, groupName, restaurant_id]);
-    }
-  }
+            }
+          }
 
-  // Keep only the last 5 matches per user
-  await db.none(`
+          // Keep only the last 5 matches per user
+          await db.none(`
     DELETE FROM UserMatchHistory
     WHERE user_id = $1
     AND history_id NOT IN (
@@ -1420,7 +1421,7 @@ for (const user of groupMembers) {
       LIMIT 5
     )
   `, [user.user_id]);
-}
+        }
 
 
 
@@ -1472,4 +1473,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, server }; 
+module.exports = { app, server };
