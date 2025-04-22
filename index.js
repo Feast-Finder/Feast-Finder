@@ -982,6 +982,12 @@ io.on('connection', (socket) => {
       console.error(`User ${username} not found in Redis cache`);
       return;
     }
+
+    // Create session and add self to it
+    activeSessions.set(groupId, { users : new Set(), ready: new Set(), types: [] });
+    const session = activeSessions.get(groupId);
+    session.users.add(currentUserId);
+    session.ready.add(currentUserId);
     
     console.log(`Found user ID ${target} for username ${username}`);
     
@@ -1082,6 +1088,51 @@ io.on('connection', (socket) => {
 
     io.to(`group-${groupId}`).emit('friend-accepted-invite');
     await pubClient.hdel(`invitePending:${userId}`, groupId);
+  });
+
+  socket.on('request-game-start', ({ groupId, userId, gameName }) => {
+    const session = activeSessions.get(groupId);
+    if (!session) return;
+
+    session.readyForGame = new Set();
+    session.readyForGame.add(userId);
+
+    io.to(`group-${groupId}`).emit('game-invite', { gameName });
+  });
+
+  socket.on('accept-game-invite', ({ groupId, userId, gameName }) => {
+    const session = activeSessions.get(groupId);
+    if (!session) return;
+
+    session.readyForGame.add(userId);
+
+    if (session.readyForGame.size === session.users.size) {
+      io.to(`group-${groupId}`).emit('game-start', { gameName });
+    }
+  });
+
+  socket.on('submit-quickdraw-score', ({ groupId, userId, score }) => {
+    const session = activeSessions.get(groupId);
+    if (!session) return;
+
+    if (!session.gameScores) {
+      session.gameScores = new Map();
+    }
+
+    session.gameScores.set(userId, score);
+
+    // Compare scores once all users have submitted
+    if (session.gameScores.size === session.users.size) {
+      let highest = 0;
+      let loser;
+
+      for (const [name, score] of session.gameScores) {
+        loser   = score > highest ? name : loser;
+        highest = score > highest ? score : highest;
+      }
+
+      io.to(`group-${groupId}`).emit('game-results', { loserId: loser });
+    }
   });
 
   socket.on('disconnect', () => {
