@@ -361,6 +361,7 @@ app.get('/profile', async (req, res) => {
 
     const userId = currentUser.user_id;
 
+    // ✅ Pull fresh data from DB
     const user = await db.oneOrNone(`SELECT * FROM users WHERE user_id = $1`, [userId]);
     const preferences = await db.oneOrNone(`SELECT * FROM user_preferences WHERE user_id = $1`, [userId]);
 
@@ -372,7 +373,6 @@ app.get('/profile', async (req, res) => {
       ORDER BY h.matched_at DESC
       LIMIT 10
     `, [userId]);
-
 
     const matchStats = await db.one(`
       SELECT COUNT(*) AS total
@@ -388,6 +388,7 @@ app.get('/profile', async (req, res) => {
       ORDER BY count DESC
       LIMIT 3
     `, [userId]);
+
     const timelineData = await db.any(`
       SELECT h.*, r.name
       FROM UserMatchHistory h
@@ -397,14 +398,15 @@ app.get('/profile', async (req, res) => {
       LIMIT 10
     `, [userId]);
 
-
+    // ✅ Overwrite the session with updated user info
+    req.session.user = user;
 
     res.render('Pages/Profile', {
-      user: currentUser,
+      user, // ✅ Use the freshly fetched DB user
       history: userHistory,
       matchStats,
       topFriends,
-      timelineData // 👈 add this
+      timelineData
     });
 
   } catch (err) {
@@ -412,6 +414,7 @@ app.get('/profile', async (req, res) => {
     res.status(500).send('Server error');
   }
 });
+
 
 
 app.get('/friends', async (req, res) => {
@@ -699,7 +702,7 @@ app.post('/profile/upload', (req, res) => {
         try {
           const dbPath = `/uploads/${fileName}`;
           await db.none('UPDATE users SET profile_picture_url = $1 WHERE user_id = $2', [dbPath, userId]);
-
+          req.session.user.profile_picture_url = dbPath;
           // 2. Delete old picture from filesystem
           if (oldPictureUrl && oldPictureUrl.startsWith('/uploads/')) {
             const oldPath = path.join(__dirname, 'public', oldPictureUrl);

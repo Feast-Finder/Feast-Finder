@@ -437,12 +437,19 @@
 
         const result = await res.json();
 
-        if (res.ok && result.profile_picture_url) {
-          const profileImg = document.querySelector('.card-body img.rounded-circle');
-          if (profileImg) {
-            profileImg.src = `${result.profile_picture_url}?t=${Date.now()}`;
-          }
-        } else {
+if (res.ok && result.profile_picture_url) {
+  const profileImg = document.querySelector('.card-body img.rounded-circle');
+  if (profileImg) {
+    profileImg.src = `${result.profile_picture_url}?t=${Date.now()}`;
+  }
+
+  
+  const navbarImg = document.querySelector('.navbar .dropdown-toggle img');
+  if (navbarImg) {
+    navbarImg.src = `${result.profile_picture_url}?t=${Date.now()}`;
+  }
+}
+ else {
           console.error(result.error || 'Upload failed');
         }
       } catch (err) {
