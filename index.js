@@ -124,20 +124,26 @@ app.post('/register', async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, 10);
 
-    // Insert new user
+    // Attempt to insert the user (email/phone may be optional)
     const newUser = await db.one(`
       INSERT INTO Users (username, password_hash, email, phone)
       VALUES ($1, $2, $3, $4)
       RETURNING *
-    `, [username, hash, email || null, phone || null]);
+    `, [
+      username,
+      hash,
+      email && email.trim() !== '' ? email.trim() : null,
+      phone && phone.trim() !== '' ? phone.replace(/\D/g, '') : null
+    ]);
+    
 
-    // Insert into user_preferences with default blank values
+    // Insert default preferences
     await db.none(`
       INSERT INTO user_preferences (user_id, cuisines, dietary, price_range)
       VALUES ($1, ARRAY[]::TEXT[], ARRAY[]::TEXT[], 'any')
     `, [newUser.user_id]);
 
-    // Set session and mark active
+    // Set session + mark active
     req.session.user = newUser;
 
     await db.none(`
@@ -146,11 +152,56 @@ app.post('/register', async (req, res) => {
     `, [newUser.user_id]);
 
     req.session.save(() => res.redirect('/home'));
+
   } catch (err) {
-    console.error(err);
-    res.render('Pages/register', { message: 'Registration failed. Username/email might already be taken.' });
+    console.error('❌ Registration error:', err);
+
+    let message = 'Registration failed.';
+
+    if (err.code === '23505') { // unique_violation
+      if (err.detail.includes('username')) {
+        message = 'Username is already taken.';
+      } else if (err.detail.includes('email')) {
+        message = 'Email is already registered.';
+      } else if (err.detail.includes('phone')) {
+        message = 'Phone number is already registered.';
+      }
+    }
+
+    res.render('Pages/register', { message });
   }
 });
+
+app.post('/check-email', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) return res.json({ exists: false });
+
+  try {
+    const exists = await db.oneOrNone('SELECT 1 FROM Users WHERE email = $1', [email]);
+    res.json({ exists: !!exists });
+  } catch (err) {
+    console.error('Error checking email:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/check-phone', async (req, res) => {
+  let { phone } = req.body;
+  if (!phone) return res.json({ exists: false });
+
+  // Normalize: Remove non-digit characters
+  phone = phone.replace(/\D/g, '');
+
+  try {
+    const exists = await db.oneOrNone('SELECT 1 FROM Users WHERE phone = $1', [phone]);
+    res.json({ exists: !!exists });
+  } catch (err) {
+    console.error('Error checking phone:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 
 app.post('/login', async (req, res) => {
   try {
@@ -1087,8 +1138,8 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     pubClient.hdel(connectedUsersKey, currentUserId);
   });
-  
-  
+
+
 
   socket.on('ready-to-swipe', async ({ groupId, userId, lat, lng, types }) => {
     const readyKey = `groupReady:${groupId}`;
@@ -1337,18 +1388,25 @@ const groupMembers = await db.any(`
 
 // Insert into UserMatchHistory for each member
 for (const user of groupMembers) {
-  // Create matched_with string (exclude current user)
-  const matchedWith = groupMembers
-    .filter(m => m.user_id !== user.user_id)
-    .map(m => m.username)
-    .join(', ') || 'Solo';
+  const otherUsers = groupMembers.filter(m => m.user_id !== user.user_id);
 
-  await db.none(`
-    INSERT INTO UserMatchHistory (user_id, matched_with, group_name, restaurant_id)
-    VALUES ($1, $2, $3, $4)
-  `, [user.user_id, matchedWith, groupName, restaurant_id]);
+  if (otherUsers.length === 0) {
+    // Solo match
+    await db.none(`
+      INSERT INTO UserMatchHistory (user_id, matched_with, group_name, restaurant_id)
+      VALUES ($1, 'Solo', $2, $3)
+    `, [user.user_id, groupName, restaurant_id]);
+  } else {
+    // Create one entry per pair
+    for (const other of otherUsers) {
+      await db.none(`
+        INSERT INTO UserMatchHistory (user_id, matched_with, group_name, restaurant_id)
+        VALUES ($1, $2, $3, $4)
+      `, [user.user_id, other.username, groupName, restaurant_id]);
+    }
+  }
 
-  // Optional: keep only last 5 history entries
+  // Keep only the last 5 matches per user
   await db.none(`
     DELETE FROM UserMatchHistory
     WHERE user_id = $1
@@ -1360,6 +1418,8 @@ for (const user of groupMembers) {
     )
   `, [user.user_id]);
 }
+
+
 
 
         return res.json({ success: true, isMatch: true, restaurant: { place_id, restaurant_name, photoUrl } });
@@ -1400,6 +1460,13 @@ app.get('/session/group-for-sender', async (req, res) => {
 // *****************************************************
 // <!-- Section 7 : Start Server -->
 // *****************************************************
-const server = http.listen(3000, () => console.log('Server listening on port 3000'));
+const PORT = process.env.PORT || 3000;
 
-module.exports = server; // Export the http server instance
+let server;
+if (require.main === module) {
+  server = http.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
+
+module.exports = { app, server }; 
