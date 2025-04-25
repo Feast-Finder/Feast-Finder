@@ -1,28 +1,25 @@
 services:
   db:
     image: postgres:14
-    restart: always
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-testdb}
-      POSTGRES_USER: ${POSTGRES_USER:-testuser}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-testpass}
+    env_file: .env
+    expose:
+      - '5432'
     volumes:
-      - postgres_data_test:/var/lib/postgresql/data
+      - feast-finder:/var/lib/postgresql/data
+      - ./src/init_data:/docker-entrypoint-initdb.d
 
   redis:
     image: redis:6
     ports:
       - "6379:6379"
+    command: redis-server --save "" --appendonly no
 
   web:
     image: node:lts
     working_dir: /repository
+    env_file: .env
     environment:
-      NODE_ENV: test
-      SESSION_SECRET: ${SESSION_SECRET}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      - NODE_ENV=development
     depends_on:
       - db
       - redis
@@ -30,7 +27,7 @@ services:
       - '80:3000'
     volumes:
       - .:/repository
-    command: sh -c "npm install && npm test"
+    command: sh -c "sleep 30 && npm install && npm test"
 
 volumes:
-  postgres_data_test:
+  feast-finder:
