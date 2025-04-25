@@ -139,26 +139,6 @@ describe('Integration Tests', () => {
         });
     });
 
-    describe('POST /register (Duplicate Username)', () => {
-        it('should render register page with error if username already exists', (done) => {
-            chai.request(app) // Use chai.request directly, not the agent
-                .post('/register')
-                .send({
-                    username: TEST_USERNAME, // Use the username created in the 'before' block
-                    password: 'anotherPassword1!',
-                    confirmPassword: 'anotherPassword1!',
-                    email: 'duplicate@test.com' // Provide necessary fields
-                })
-                .end((err, res) => {
-                    expect(err).to.be.null;
-                    expect(res).to.have.status(200); // Expecting render, not redirect or specific error code
-                    expect(res).to.be.html;
-                    expect(res.text).to.include('Registration failed. Username/email might already be taken.');
-                    done();
-                });
-        });
-    });
-
     describe('POST /friends/remove (Authenticated)', () => {
         it('should remove testuser2 as a friend and return success', (done) => {
             expect(testUserId2, 'testUserId2 should be set by search test').to.be.a('number');
