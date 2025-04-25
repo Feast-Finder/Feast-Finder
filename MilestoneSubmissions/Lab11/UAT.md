@@ -27,7 +27,8 @@
 
 ### Testers  
 - Team members:  
-
+    - Sam Westlake
+    - Denys Davidenko
 ## Test Results
 - 
 
@@ -85,7 +86,8 @@
 
 ### Testers
 -   Team members:
-
+    - Denys Davidenko
+    - Jakob Boro
 ## Test Results
 - 
 
@@ -153,6 +155,7 @@
 
 ### Testers
 -   Team members:
-
+    - Quinci Owen
+    - Sadie Schwarz
 ## Test Results
 - 
