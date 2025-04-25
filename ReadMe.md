@@ -55,7 +55,8 @@ None! Simply boot up a web browser of your choice and navigate to http://feastfi
 - In a web browser of your choice, navigate to http://localhost
 
 ## Running Tests 🧑‍🔬:
-Navigate to the git directory in your terminal and run the below command to run the test compose file. You should expect 6 passing tests and their results after the container starts.
+
+- Navigate to the git directory in your terminal and run the below command to run the test compose file. You should expect 6 passing tests and their results after the container starts. These are also the integration and unit test cases for Lab 11.
 
 ```
 docker compose -f docker-compose.test.yml up
