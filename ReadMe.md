@@ -56,8 +56,12 @@ None! Simply boot up a web browser of your choice and navigate to http://feastfi
 
 ## Running Tests 🧑‍🔬:
 
-TODO
+- Navigate to the git directory in your terminal and run the below command to run the test compose file. You should expect 6 passing tests and their results after the container starts. These are also the integration and unit test cases for Lab 11.
+
+```
+docker compose -f docker-compose.test.yml up
+```
 
 ## [Permanent Link to Deployed App](http://feastfinder.centralus.cloudapp.azure.com/)
 
-
+## [Link to Demo Video](https://www.youtube.com/watch?v=euY4AIK6WNQ)
